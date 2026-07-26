@@ -76,7 +76,8 @@ if (mongoUri) {
 }
 
 // ---------------- LOCAL JSON FALLBACK SETUP ----------------
-const DATA_DIR = path.join(__dirname, 'data')
+const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || (process.env.NODE_ENV === 'production' && !fs.existsSync(path.join(__dirname, 'data')))
+const DATA_DIR = isServerless ? path.join('/tmp', 'data') : path.join(__dirname, 'data')
 const DB_FILE = path.join(DATA_DIR, 'db.json')
 
 const defaultData = {
@@ -95,28 +96,44 @@ const defaultData = {
   submissions: []
 }
 
+let inMemoryData = JSON.parse(JSON.stringify(defaultData))
+
 function ensureDbExists() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true })
-  }
-  if (!fs.existsSync(DB_FILE)) {
-    fs.writeFileSync(DB_FILE, JSON.stringify(defaultData, null, 2))
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true })
+    }
+    if (!fs.existsSync(DB_FILE)) {
+      fs.writeFileSync(DB_FILE, JSON.stringify(inMemoryData, null, 2))
+    }
+  } catch (e) {
+    // Ignore read-only filesystem errors
   }
 }
 
 function readDb() {
   ensureDbExists()
   try {
-    const raw = fs.readFileSync(DB_FILE, 'utf8')
-    return JSON.parse(raw)
+    if (fs.existsSync(DB_FILE)) {
+      const raw = fs.readFileSync(DB_FILE, 'utf8')
+      const parsed = JSON.parse(raw)
+      inMemoryData = parsed
+      return parsed
+    }
   } catch (err) {
-    return defaultData
+    // Ignore read-only errors
   }
+  return inMemoryData
 }
 
 function writeDb(data) {
-  ensureDbExists()
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2))
+  inMemoryData = data
+  try {
+    ensureDbExists()
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2))
+  } catch (e) {
+    // Ignore read-only errors
+  }
 }
 
 // ---------------- STORAGE API EXPORTS ----------------
