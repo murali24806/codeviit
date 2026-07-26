@@ -38,8 +38,6 @@ const LANGUAGE_IDS = {
 // Brevo API OTP Sender Helper
 async function sendBrevoOtpEmail(email, name, otpCode) {
   const apiKey = process.env.BREVO_API_KEY
-  const senderEmail = process.env.BREVO_SENDER_EMAIL || 'muralipatnala2486@gmail.com'
-
   if (!apiKey) {
     console.log(`\n======================================================`)
     console.log(`[DEV MODE] Brevo API Key missing (BREVO_API_KEY env).`)
@@ -48,13 +46,32 @@ async function sendBrevoOtpEmail(email, name, otpCode) {
     return { devMode: true, otpCode }
   }
 
+  let activeSenderEmail = process.env.BREVO_SENDER_EMAIL || 'muralipatnala2486@gmail.com'
+
+  // Dynamic Brevo Account Sender Verification
+  try {
+    const sendersRes = await axios.get('https://api.brevo.com/v3/senders', {
+      headers: { 'api-key': apiKey }
+    })
+    const senders = sendersRes.data?.senders || []
+    if (senders.length > 0) {
+      const match = senders.find(s => s.email?.toLowerCase() === activeSenderEmail.toLowerCase())
+      if (!match) {
+        // Fallback to the first active/verified sender registered in this Brevo account
+        activeSenderEmail = senders[0].email
+      }
+    }
+  } catch (e) {
+    // Ignore lookup errors, fallback to configured
+  }
+
   try {
     const response = await axios.post(
       'https://api.brevo.com/v3/smtp/email',
       {
         sender: {
           name: 'CodeViit Platform',
-          email: senderEmail
+          email: activeSenderEmail
         },
         to: [{ email, name: name || 'Student' }],
         subject: `${otpCode} is your CodeViit Verification Code`,
