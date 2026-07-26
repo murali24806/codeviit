@@ -7,6 +7,12 @@ const storage = require('./storage')
 const app = express()
 app.use(cors())
 app.use((req, res, next) => {
+  if (req.url && !req.url.startsWith('/api') && !req.url.startsWith('/data')) {
+    req.url = '/api' + (req.url.startsWith('/') ? '' : '/') + req.url
+  }
+  next()
+})
+app.use((req, res, next) => {
   if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
     return next()
   }
