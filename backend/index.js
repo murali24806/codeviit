@@ -38,6 +38,8 @@ const LANGUAGE_IDS = {
 // Brevo API OTP Sender Helper
 async function sendBrevoOtpEmail(email, name, otpCode) {
   const apiKey = process.env.BREVO_API_KEY
+  const senderEmail = process.env.BREVO_SENDER_EMAIL || 'muralipatnala2486@gmail.com'
+
   if (!apiKey) {
     console.log(`\n======================================================`)
     console.log(`[DEV MODE] Brevo API Key missing (BREVO_API_KEY env).`)
@@ -52,7 +54,7 @@ async function sendBrevoOtpEmail(email, name, otpCode) {
       {
         sender: {
           name: 'CodeViit Platform',
-          email: process.env.BREVO_SENDER_EMAIL || 'no-reply@codeviit.com'
+          email: senderEmail
         },
         to: [{ email, name: name || 'Student' }],
         subject: `${otpCode} is your CodeViit Verification Code`,

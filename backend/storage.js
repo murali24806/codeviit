@@ -80,7 +80,7 @@ const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME 
 const DATA_DIR = isServerless ? path.join('/tmp', 'data') : path.join(__dirname, 'data')
 const DB_FILE = path.join(DATA_DIR, 'db.json')
 
-const defaultData = {
+let defaultData = {
   users: [
     {
       id: 'admin_1',
@@ -94,6 +94,16 @@ const defaultData = {
   otps: [],
   contests: [],
   submissions: []
+}
+
+try {
+  const seedPath = path.join(__dirname, 'data', 'db.json')
+  if (fs.existsSync(seedPath)) {
+    const rawSeed = fs.readFileSync(seedPath, 'utf8')
+    defaultData = JSON.parse(rawSeed)
+  }
+} catch (e) {
+  // Ignore seed load errors
 }
 
 let inMemoryData = JSON.parse(JSON.stringify(defaultData))
