@@ -1,0 +1,321 @@
+{
+  "users": [
+    {
+      "id": "admin_1",
+      "name": "Platform Administrator",
+      "registrationNumber": "ADMIN001",
+      "email": "admin@codeviit.edu.in",
+      "role": "admin",
+      "createdAt": "2026-07-26T02:42:53.763Z"
+    },
+    {
+      "id": "user_1785000742598",
+      "name": "sai",
+      "registrationNumber": "24L31A43C7",
+      "email": "saieducationhelp@gmail.com",
+      "role": "student",
+      "createdAt": "2026-07-25T17:32:22.598Z"
+    }
+  ],
+  "otps": [
+    {
+      "email": "saieducaionhelp@gmail.com",
+      "name": "sai",
+      "registrationNumber": "24L31A43C7",
+      "code": "799947",
+      "expiresAt": 1785002880942
+    },
+    {
+      "email": "saieducationhhelp@gmail.com",
+      "name": "sai",
+      "registrationNumber": "24L31A43C7",
+      "code": "270287",
+      "expiresAt": 1785003053578
+    }
+  ],
+  "contests": [
+    {
+      "id": "contest_1785000699969",
+      "title": "daily contest",
+      "description": "",
+      "startTime": "2026-07-25T17:31:00.000Z",
+      "endTime": "2026-07-25T17:40:00.000Z",
+      "durationMinutes": 10,
+      "questions": [
+        {
+          "id": "q_1",
+          "title": "Two Sum",
+          "description": "Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.",
+          "inputFormat": "First line contains N and Target. Second line contains N space-separated integers.",
+          "outputFormat": "Print two space-separated indices.",
+          "constraints": "2 <= N <= 10^4",
+          "sampleInput": "",
+          "sampleOutput": "",
+          "starterCode": {},
+          "testCases": [
+            {
+              "id": "tc_1",
+              "input": "4 9\n2 7 11 15",
+              "expectedOutput": "0 1",
+              "description": "Sample Case 1"
+            },
+            {
+              "id": "tc_2",
+              "input": "3 6\n3 2 4",
+              "expectedOutput": "1 2",
+              "description": "Sample Case 2"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-07-25T17:31:39.969Z"
+    }
+  ],
+  "submissions": [
+    {
+      "id": "sub_1785000946697",
+      "contestId": "contest_1785000699969",
+      "contestTitle": "daily contest",
+      "questionId": "q_1",
+      "questionTitle": "Two Sum",
+      "userId": "user_1785000742598",
+      "userName": "sai",
+      "registrationNumber": "24L31A43C7",
+      "language": "python",
+      "code": "n, target = map(int, input().split())\nnums = list(map(int, input().split()))\n\nmp = {}\n\nfor i in range(n):\n    complement = target - nums[i]\n    if complement in mp:\n        print(mp[complement], i)\n        break\n    mp[nums[i]] = i",
+      "score": 100,
+      "passedCount": 2,
+      "totalCount": 2,
+      "status": "Accepted",
+      "testResults": [
+        {
+          "input": "4 9\n2 7 11 15",
+          "expectedOutput": "0 1",
+          "actualOutput": "0 1",
+          "passed": true,
+          "error": null,
+          "status": "Accepted"
+        },
+        {
+          "input": "3 6\n3 2 4",
+          "expectedOutput": "1 2",
+          "actualOutput": "1 2",
+          "passed": true,
+          "error": null,
+          "status": "Accepted"
+        }
+      ],
+      "submittedAt": "2026-07-25T17:35:46.697Z"
+    },
+    {
+      "id": "sub_1785000756604",
+      "contestId": "contest_1785000699969",
+      "contestTitle": "daily contest",
+      "questionId": "q_1",
+      "questionTitle": "Two Sum",
+      "userId": "user_1785000742598",
+      "userName": "sai",
+      "registrationNumber": "24L31A43C7",
+      "language": "python",
+      "code": "n, target = map(int, input().split())\nnums = list(map(int, input().split()))\n\nmp = {}\n\nfor i in range(n):\n    complement = target - nums[i]\n    if complement in mp:\n        print(mp[complement], i)\n        break\n    mp[nums[i]] = i",
+      "score": 100,
+      "passedCount": 2,
+      "totalCount": 2,
+      "status": "Accepted",
+      "testResults": [
+        {
+          "input": "4 9\n2 7 11 15",
+          "expectedOutput": "0 1",
+          "actualOutput": "0 1",
+          "passed": true,
+          "error": null,
+          "status": "Accepted"
+        },
+        {
+          "input": "3 6\n3 2 4",
+          "expectedOutput": "1 2",
+          "actualOutput": "1 2",
+          "passed": true,
+          "error": null,
+          "status": "Accepted"
+        }
+      ],
+      "submittedAt": "2026-07-25T17:32:36.604Z"
+    },
+    {
+      "id": "sub_1785000605617",
+      "contestId": "contest_1784999088179",
+      "contestTitle": "Daily contest",
+      "questionId": "q_1",
+      "questionTitle": "Two Sum",
+      "userId": "admin_1",
+      "userName": "Platform Administrator",
+      "registrationNumber": "ADMIN001",
+      "language": "python",
+      "code": "n, target = map(int, input().split())\nnums = list(map(int, input().split()))\n\nmp = {}\n\nfor i in range(n):\n    complement = target - nums[i]\n    if complement in mp:\n        print(mp[complement], i)\n        break\n    mp[nums[i]] = i",
+      "score": 100,
+      "passedCount": 2,
+      "totalCount": 2,
+      "status": "Accepted",
+      "testResults": [
+        {
+          "input": "4 9\n2 7 11 15",
+          "expectedOutput": "0 1",
+          "actualOutput": "0 1",
+          "passed": true,
+          "error": null,
+          "status": "Accepted"
+        },
+        {
+          "input": "3 6\n3 2 4",
+          "expectedOutput": "1 2",
+          "actualOutput": "1 2",
+          "passed": true,
+          "error": null,
+          "status": "Accepted"
+        }
+      ],
+      "submittedAt": "2026-07-25T17:30:05.617Z"
+    },
+    {
+      "id": "sub_1785000586150",
+      "contestId": "contest_1784999088179",
+      "contestTitle": "Daily contest",
+      "questionId": "q_1",
+      "questionTitle": "Two Sum",
+      "userId": "admin_1",
+      "userName": "Platform Administrator",
+      "registrationNumber": "ADMIN001",
+      "language": "python",
+      "code": "n, target = map(int, input().split())\nnums = list(map(int, input().split()))\n\nmp = {}\n\nfor i in range(n):\n    complement = target - nums[i]\n    if complement in mp:\n        print(mp[complement], i)\n        break\n    mp[nums[i]] = i",
+      "score": 100,
+      "passedCount": 2,
+      "totalCount": 2,
+      "status": "Accepted",
+      "testResults": [
+        {
+          "input": "4 9\n2 7 11 15",
+          "expectedOutput": "0 1",
+          "actualOutput": "0 1",
+          "passed": true,
+          "error": null,
+          "status": "Accepted"
+        },
+        {
+          "input": "3 6\n3 2 4",
+          "expectedOutput": "1 2",
+          "actualOutput": "1 2",
+          "passed": true,
+          "error": null,
+          "status": "Accepted"
+        }
+      ],
+      "submittedAt": "2026-07-25T17:29:46.150Z"
+    },
+    {
+      "id": "sub_1785000425687",
+      "contestId": "contest_1784999088179",
+      "contestTitle": "Daily contest",
+      "questionId": "q_1",
+      "questionTitle": "Two Sum",
+      "userId": "user_1785000385010",
+      "userName": "sai",
+      "registrationNumber": "24L31A43C7",
+      "language": "python",
+      "code": "n, target = map(int, input().split())\nnums = list(map(int, input().split()))\n\nmp = {}\n\nfor i in range(n):\n    complement = target - nums[i]\n    if complement in mp:\n        print(mp[complement], i)\n        break\n    mp[nums[i]] = i",
+      "score": 100,
+      "passedCount": 2,
+      "totalCount": 2,
+      "status": "Accepted",
+      "testResults": [
+        {
+          "input": "4 9\n2 7 11 15",
+          "expectedOutput": "0 1",
+          "actualOutput": "0 1",
+          "passed": true,
+          "error": null,
+          "status": "Accepted"
+        },
+        {
+          "input": "3 6\n3 2 4",
+          "expectedOutput": "1 2",
+          "actualOutput": "1 2",
+          "passed": true,
+          "error": null,
+          "status": "Accepted"
+        }
+      ],
+      "submittedAt": "2026-07-25T17:27:05.687Z"
+    },
+    {
+      "id": "sub_1785000405306",
+      "contestId": "contest_1784999088179",
+      "contestTitle": "Daily contest",
+      "questionId": "q_1",
+      "questionTitle": "Two Sum",
+      "userId": "user_1785000385010",
+      "userName": "sai",
+      "registrationNumber": "24L31A43C7",
+      "language": "python",
+      "code": "n, target = map(int, input().split())\nnums = list(map(int, input().split()))\n\nmp = {}\n\nfor i in range(n):\n    complement = target - nums[i]\n    if complement in mp:\n        print(mp[complement], i)\n        break\n    mp[nums[i]] = i",
+      "score": 100,
+      "passedCount": 2,
+      "totalCount": 2,
+      "status": "Accepted",
+      "testResults": [
+        {
+          "input": "4 9\n2 7 11 15",
+          "expectedOutput": "0 1",
+          "actualOutput": "0 1",
+          "passed": true,
+          "error": null,
+          "status": "Accepted"
+        },
+        {
+          "input": "3 6\n3 2 4",
+          "expectedOutput": "1 2",
+          "actualOutput": "1 2",
+          "passed": true,
+          "error": null,
+          "status": "Accepted"
+        }
+      ],
+      "submittedAt": "2026-07-25T17:26:45.306Z"
+    },
+    {
+      "id": "sub_1784999229959",
+      "contestId": "contest_1784999088179",
+      "contestTitle": "Daily contest",
+      "questionId": "q_1",
+      "questionTitle": "Two Sum",
+      "userId": "user_1784999142413",
+      "userName": "sai",
+      "registrationNumber": "24L31A43C7",
+      "language": "python",
+      "code": "n, target = map(int, input().split())\nnums = list(map(int, input().split()))\n\nmp = {}\n\nfor i in range(n):\n    complement = target - nums[i]\n    if complement in mp:\n        print(mp[complement], i)\n        break\n    mp[nums[i]] = i",
+      "score": 100,
+      "passedCount": 2,
+      "totalCount": 2,
+      "status": "Accepted",
+      "testResults": [
+        {
+          "input": "4 9\n2 7 11 15",
+          "expectedOutput": "0 1",
+          "actualOutput": "0 1",
+          "passed": true,
+          "error": null,
+          "status": "Accepted"
+        },
+        {
+          "input": "3 6\n3 2 4",
+          "expectedOutput": "1 2",
+          "actualOutput": "1 2",
+          "passed": true,
+          "error": null,
+          "status": "Accepted"
+        }
+      ],
+      "submittedAt": "2026-07-25T17:07:09.959Z"
+    }
+  ]
+}
