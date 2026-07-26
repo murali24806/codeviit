@@ -15,7 +15,16 @@ import {
   XCircle, LogOut, Eye, Code, Layers, Search, Sparkles, Download 
 } from "lucide-react"
 
-const BACKEND_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/+$/, "")
+const getBackendUrl = () => {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '')
+  }
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return ''
+  }
+  return 'http://localhost:5000'
+}
+const BACKEND_URL = getBackendUrl()
 
 export default function AdminPage() {
   const router = useRouter()
