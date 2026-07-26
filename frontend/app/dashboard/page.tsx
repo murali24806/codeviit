@@ -12,7 +12,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useProblems } from "@/lib/problems-context"
 import type { Contest } from "@/lib/types"
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+const BACKEND_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/+$/, "")
 
 export default function DashboardPage() {
   const router = useRouter()

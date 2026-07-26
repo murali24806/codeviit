@@ -12,7 +12,7 @@ import { CodeEditor } from "@/components/editor/code-editor"
 import { useAuth } from "@/lib/auth-context"
 import { LANGUAGES, type Contest, type ContestQuestion, type TestResult, type Language } from "@/lib/types"
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+const BACKEND_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/+$/, "")
 
 const DEFAULT_STARTER_CODE: Record<string, string> = {
   python: `# Read from stdin and write to stdout\nimport sys\n\ndef solve():\n    lines = sys.stdin.read().split()\n    if not lines: return\n    # Write your solution here\n\nif __name__ == '__main__':\n    solve()\n`,
