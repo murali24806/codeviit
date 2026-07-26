@@ -127,6 +127,12 @@ function readDb() {
     if (fs.existsSync(DB_FILE)) {
       const raw = fs.readFileSync(DB_FILE, 'utf8')
       const parsed = JSON.parse(raw)
+      if (!parsed.contests || parsed.contests.length === 0) {
+        parsed.contests = defaultData.contests || []
+      }
+      if (!parsed.submissions || parsed.submissions.length === 0) {
+        parsed.submissions = defaultData.submissions || []
+      }
       inMemoryData = parsed
       return parsed
     }

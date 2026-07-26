@@ -55,7 +55,8 @@ export default function AuthPage() {
       setMessage({ type: "error", text: "Please enter your registration number." })
       return
     }
-    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    const cleanEmail = email.trim().toLowerCase()
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       setMessage({ type: "error", text: "Please enter a valid email address." })
       return
     }
