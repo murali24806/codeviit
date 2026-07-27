@@ -7,7 +7,7 @@ const nextConfig = {
     unoptimized: true,
   },
   async rewrites() {
-    const targetBackend = process.env.NEXT_PUBLIC_API_URL || 'https://codeviit-backend.vercel.app'
+    const targetBackend = process.env.NEXT_PUBLIC_API_URL || 'https://runitbackend.onrender.com'
     const cleanTarget = targetBackend.replace(/\/+$/, '')
     return [
       {
