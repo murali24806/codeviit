@@ -116,24 +116,28 @@ app.post('/api/auth/send-otp', async (req, res) => {
     return res.status(400).json({ error: 'Name, Registration Number, and Email are required.' })
   }
 
+  const cleanEmail = email.trim().toLowerCase()
+  const cleanName = name.trim()
+  const cleanRegNo = registrationNumber.trim()
+
   const otpCode = Math.floor(100000 + Math.random() * 900000).toString()
   const expiresAt = Date.now() + 10 * 60 * 1000 // 10 mins
 
   await storage.saveOtp({
-    email,
-    name,
-    registrationNumber,
+    email: cleanEmail,
+    name: cleanName,
+    registrationNumber: cleanRegNo,
     code: otpCode,
     expiresAt
   })
 
   try {
-    const result = await sendBrevoOtpEmail(email, name, otpCode)
+    const result = await sendBrevoOtpEmail(cleanEmail, cleanName, otpCode)
     res.json({
       success: true,
       message: result.devMode
         ? `[DEV MODE] OTP sent! Check server console or enter: ${otpCode}`
-        : `Verification code sent to ${email}`,
+        : `Verification code sent to ${cleanEmail}`,
       devMode: !!result.devMode,
       otpCode: result.devMode ? otpCode : undefined
     })
@@ -150,19 +154,25 @@ app.post('/api/auth/verify-otp', async (req, res) => {
     return res.status(400).json({ error: 'Email and OTP code are required.' })
   }
 
-  const verification = await storage.verifyOtp(email, code)
+  const cleanEmail = email.trim().toLowerCase()
+  const cleanCode = code.trim()
+
+  const verification = await storage.verifyOtp(cleanEmail, cleanCode)
   if (!verification.valid) {
     return res.status(400).json({ error: verification.message })
   }
 
-  const existingUser = await storage.findUserByEmail(email)
+  const existingUser = await storage.findUserByEmail(cleanEmail)
   const userId = existingUser?.id || ('user_' + Date.now())
+
+  const finalName = (name && name.trim()) || existingUser?.name || verification.otpRecord?.name || cleanEmail.split('@')[0]
+  const finalRegNo = (registrationNumber && registrationNumber.trim()) || existingUser?.registrationNumber || verification.otpRecord?.registrationNumber || 'N/A'
 
   const user = await storage.saveUser({
     id: userId,
-    name,
-    registrationNumber,
-    email,
+    name: finalName,
+    registrationNumber: finalRegNo,
+    email: cleanEmail,
     role: 'student',
     createdAt: existingUser?.createdAt || new Date().toISOString()
   })

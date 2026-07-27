@@ -57,22 +57,38 @@ const OtpModel = mongoose.models.Otp || mongoose.model('Otp', otpSchema)
 const ContestModel = mongoose.models.Contest || mongoose.model('Contest', contestSchema)
 const SubmissionModel = mongoose.models.Submission || mongoose.model('Submission', submissionSchema)
 
-let isMongoConnected = false
+let mongoPromise = null
 
-// Initialize MongoDB connection if MONGODB_URI is provided
-const mongoUri = process.env.MONGODB_URI
-if (mongoUri) {
-  mongoose.connect(mongoUri)
-    .then(() => {
-      isMongoConnected = true
-      console.log('✅ MongoDB connected successfully to Cloud Database!')
+async function ensureMongoConnected() {
+  const mongoUri = process.env.MONGODB_URI
+  if (!mongoUri) return false
+
+  if (mongoose.connection.readyState === 1) {
+    return true
+  }
+
+  if (!mongoPromise) {
+    mongoPromise = mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 5000
     })
-    .catch((err) => {
-      console.error('❌ MongoDB Connection Error:', err.message)
-      console.log('⚠️ Falling back to local db.json storage.')
-    })
-} else {
-  console.log('ℹ️ MONGODB_URI environment variable not found. Using local db.json storage.')
+      .then(() => {
+        console.log('✅ MongoDB connected successfully to Cloud Database!')
+        return true
+      })
+      .catch((err) => {
+        console.error('❌ MongoDB Connection Error:', err.message)
+        mongoPromise = null
+        return false
+      })
+  }
+
+  try {
+    await mongoPromise
+    return mongoose.connection.readyState === 1
+  } catch (err) {
+    mongoPromise = null
+    return false
+  }
 }
 
 // ---------------- LOCAL JSON FALLBACK SETUP ----------------
@@ -127,11 +143,17 @@ function readDb() {
     if (fs.existsSync(DB_FILE)) {
       const raw = fs.readFileSync(DB_FILE, 'utf8')
       const parsed = JSON.parse(raw)
-      if (!parsed.contests || parsed.contests.length === 0) {
+      if (!parsed.contests) {
         parsed.contests = defaultData.contests || []
       }
-      if (!parsed.submissions || parsed.submissions.length === 0) {
+      if (!parsed.submissions) {
         parsed.submissions = defaultData.submissions || []
+      }
+      if (!parsed.users) {
+        parsed.users = defaultData.users || []
+      }
+      if (!parsed.otps) {
+        parsed.otps = []
       }
       inMemoryData = parsed
       return parsed
@@ -156,98 +178,117 @@ function writeDb(data) {
 module.exports = {
   // Users
   getUsers: async () => {
-    if (isMongoConnected) {
-      const users = await UserModel.find({}).lean()
-      return users
+    if (await ensureMongoConnected()) {
+      return await UserModel.find({}).lean()
     }
     const db = readDb()
     return db.users || []
   },
 
   findUserByEmail: async (email) => {
-    if (isMongoConnected) {
-      return await UserModel.findOne({ email: new RegExp(`^${email}$`, 'i') }).lean()
+    if (!email) return null
+    const clean = email.trim().toLowerCase()
+    if (await ensureMongoConnected()) {
+      return await UserModel.findOne({ email: new RegExp(`^${clean}$`, 'i') }).lean()
     }
     const db = readDb()
-    return db.users.find(u => u.email.toLowerCase() === email.toLowerCase())
+    return (db.users || []).find(u => u.email && u.email.toLowerCase() === clean)
   },
 
   saveUser: async (user) => {
-    if (isMongoConnected) {
-      const updated = await UserModel.findOneAndUpdate(
-        { $or: [{ id: user.id }, { email: new RegExp(`^${user.email}$`, 'i') }] },
-        user,
-        { upsert: true, new: true }
-      ).lean()
-      return updated
+    const cleanEmail = user.email ? user.email.trim().toLowerCase() : ''
+    const userToSave = {
+      ...user,
+      email: cleanEmail
+    }
+
+    if (await ensureMongoConnected()) {
+      const emailRegex = new RegExp(`^${cleanEmail}$`, 'i')
+      let existing = await UserModel.findOne({ $or: [{ id: user.id }, { email: emailRegex }] })
+      if (existing) {
+        existing.name = userToSave.name || existing.name
+        existing.registrationNumber = userToSave.registrationNumber || existing.registrationNumber
+        existing.email = cleanEmail || existing.email
+        existing.role = userToSave.role || existing.role || 'student'
+        await existing.save()
+        return existing.toObject()
+      } else {
+        const created = await UserModel.create(userToSave)
+        return created.toObject()
+      }
     }
     const db = readDb()
+    if (!db.users) db.users = []
     const existingIdx = db.users.findIndex(u =>
       (u.id && u.id === user.id) ||
-      (u.email && user.email && u.email.toLowerCase() === user.email.toLowerCase())
+      (u.email && cleanEmail && u.email.toLowerCase() === cleanEmail)
     )
     if (existingIdx >= 0) {
-      db.users[existingIdx] = { ...db.users[existingIdx], ...user }
+      db.users[existingIdx] = { ...db.users[existingIdx], ...userToSave }
     } else {
-      db.users.push(user)
+      db.users.push(userToSave)
     }
     writeDb(db)
-    return user
+    return userToSave
   },
 
   // OTPs
   saveOtp: async (otpData) => {
-    if (isMongoConnected) {
-      await OtpModel.deleteMany({ email: new RegExp(`^${otpData.email}$`, 'i') })
-      await OtpModel.create(otpData)
+    const cleanEmail = otpData.email ? otpData.email.trim().toLowerCase() : ''
+    const dataToSave = { ...otpData, email: cleanEmail }
+    if (await ensureMongoConnected()) {
+      await OtpModel.deleteMany({ email: new RegExp(`^${cleanEmail}$`, 'i') })
+      await OtpModel.create(dataToSave)
       return
     }
     const db = readDb()
-    db.otps = (db.otps || []).filter(o => o.email.toLowerCase() !== otpData.email.toLowerCase())
-    db.otps.push(otpData)
+    db.otps = (db.otps || []).filter(o => o.email.toLowerCase() !== cleanEmail)
+    db.otps.push(dataToSave)
     writeDb(db)
   },
 
   verifyOtp: async (email, code) => {
-    if (isMongoConnected) {
-      const record = await OtpModel.findOne({ email: new RegExp(`^${email}$`, 'i') }).lean()
+    const cleanEmail = email ? email.trim().toLowerCase() : ''
+    const cleanCode = code ? code.trim() : ''
+    if (await ensureMongoConnected()) {
+      const record = await OtpModel.findOne({ email: new RegExp(`^${cleanEmail}$`, 'i') }).lean()
       if (!record) return { valid: false, message: 'OTP not found or expired. Please request a new OTP.' }
       
       if (Date.now() > record.expiresAt) {
-        await OtpModel.deleteOne({ email: new RegExp(`^${email}$`, 'i') })
+        await OtpModel.deleteOne({ email: new RegExp(`^${cleanEmail}$`, 'i') })
         return { valid: false, message: 'OTP has expired. Please request a new OTP.' }
       }
 
-      if (record.code !== code.trim()) {
+      if (record.code !== cleanCode) {
         return { valid: false, message: 'Invalid OTP code. Please check and try again.' }
       }
 
-      await OtpModel.deleteOne({ email: new RegExp(`^${email}$`, 'i') })
-      return { valid: true }
+      await OtpModel.deleteOne({ email: new RegExp(`^${cleanEmail}$`, 'i') })
+      return { valid: true, otpRecord: record }
     }
 
     const db = readDb()
-    const record = (db.otps || []).find(o => o.email.toLowerCase() === email.toLowerCase())
+    const record = (db.otps || []).find(o => o.email && o.email.toLowerCase() === cleanEmail)
     if (!record) return { valid: false, message: 'OTP not found or expired. Please request a new OTP.' }
     
     if (Date.now() > record.expiresAt) {
-      db.otps = db.otps.filter(o => o.email.toLowerCase() !== email.toLowerCase())
+      db.otps = db.otps.filter(o => o.email.toLowerCase() !== cleanEmail)
       writeDb(db)
       return { valid: false, message: 'OTP has expired. Please request a new OTP.' }
     }
 
-    if (record.code !== code.trim()) {
+    if (record.code !== cleanCode) {
       return { valid: false, message: 'Invalid OTP code. Please check and try again.' }
     }
 
-    db.otps = db.otps.filter(o => o.email.toLowerCase() !== email.toLowerCase())
+    db.otps = db.otps.filter(o => o.email.toLowerCase() !== cleanEmail)
     writeDb(db)
-    return { valid: true }
+    return { valid: true, otpRecord: record }
   },
 
   // Contests
   getContests: async () => {
-    if (isMongoConnected) {
+    if (await ensureMongoConnected()) {
       return await ContestModel.find({}).sort({ createdAt: -1 }).lean()
     }
     const db = readDb()
@@ -255,15 +296,19 @@ module.exports = {
   },
 
   getContestById: async (id) => {
-    if (isMongoConnected) {
-      return await ContestModel.findOne({ id }).lean()
+    if (await ensureMongoConnected()) {
+      const query = { $or: [{ id: id }] }
+      if (mongoose.Types.ObjectId.isValid(id)) {
+        query.$or.push({ _id: id })
+      }
+      return await ContestModel.findOne(query).lean()
     }
     const db = readDb()
     return (db.contests || []).find(c => c.id === id)
   },
 
   saveContest: async (contest) => {
-    if (isMongoConnected) {
+    if (await ensureMongoConnected()) {
       return await ContestModel.findOneAndUpdate(
         { id: contest.id },
         contest,
@@ -283,8 +328,12 @@ module.exports = {
   },
 
   deleteContest: async (id) => {
-    if (isMongoConnected) {
-      await ContestModel.deleteOne({ id })
+    if (await ensureMongoConnected()) {
+      const query = { $or: [{ id: id }] }
+      if (mongoose.Types.ObjectId.isValid(id)) {
+        query.$or.push({ _id: id })
+      }
+      await ContestModel.deleteMany(query)
       return
     }
     const db = readDb()
@@ -294,7 +343,7 @@ module.exports = {
 
   // Submissions
   getSubmissions: async () => {
-    if (isMongoConnected) {
+    if (await ensureMongoConnected()) {
       return await SubmissionModel.find({}).sort({ submittedAt: -1 }).lean()
     }
     const db = readDb()
@@ -305,7 +354,7 @@ module.exports = {
     const list = Array.isArray(identifiers) ? identifiers.filter(Boolean) : [identifiers].filter(Boolean)
     if (list.length === 0) return []
 
-    if (isMongoConnected) {
+    if (await ensureMongoConnected()) {
       const orConditions = list.flatMap(id => [
         { userId: id },
         { email: new RegExp(`^${id}$`, 'i') },
@@ -340,7 +389,7 @@ module.exports = {
   getUsersWithStats: async () => {
     let users = []
     let submissions = []
-    if (isMongoConnected) {
+    if (await ensureMongoConnected()) {
       users = await UserModel.find({}).lean()
       submissions = await SubmissionModel.find({}).lean()
     } else {
@@ -385,7 +434,7 @@ module.exports = {
   },
 
   saveSubmission: async (submission) => {
-    if (isMongoConnected) {
+    if (await ensureMongoConnected()) {
       return await SubmissionModel.create(submission)
     }
     const db = readDb()

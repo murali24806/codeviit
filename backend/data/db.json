@@ -15,6 +15,38 @@
       "email": "saieducationhelp@gmail.com",
       "role": "student",
       "createdAt": "2026-07-25T17:32:22.598Z"
+    },
+    {
+      "id": "user_1785128798641",
+      "name": "deekshith",
+      "registrationNumber": "24L31A43C1",
+      "email": "deekshitpakalapati@gmail.com",
+      "role": "student",
+      "createdAt": "2026-07-27T05:06:38.641Z"
+    },
+    {
+      "id": "user_12345",
+      "name": "Student One",
+      "registrationNumber": "REG001",
+      "email": "student1@test.com",
+      "role": "student",
+      "createdAt": "2026-07-27T05:54:48.689Z"
+    },
+    {
+      "id": "user_test_or_1785131698644",
+      "name": "Or Test User",
+      "registrationNumber": "REG_OR_123",
+      "email": "test_or_1785131698644@example.com",
+      "role": "student",
+      "createdAt": "2026-07-27T05:54:58.644Z"
+    },
+    {
+      "id": "user_live_test_1785131756827",
+      "name": "Kiran Varma",
+      "registrationNumber": "24L31A43C9",
+      "email": "kiranvarma@example.com",
+      "role": "student",
+      "createdAt": "2026-07-27T05:55:56.827Z"
     }
   ],
   "otps": [

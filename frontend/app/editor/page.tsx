@@ -24,6 +24,17 @@ import { ResultsPanel } from "@/components/editor/results-panel"
 import { useProblems } from "@/lib/problems-context"
 import { LANGUAGES, type TestCase, type TestResult, type Language } from "@/lib/types"
 
+const getBackendUrl = () => {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '')
+  }
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return ''
+  }
+  return 'http://localhost:5000'
+}
+const BACKEND_URL = getBackendUrl()
+
 export default function EditorPage() {
   const router = useRouter()
   const { createProblem, updateProblem, saveStatus } = useProblems()
@@ -96,7 +107,7 @@ export default function EditorPage() {
     setConsoleOutput("")
 
     try {
-      const response = await fetch("https://runitbackend.onrender.com/api/execute", {
+      const response = await fetch(`${BACKEND_URL}/api/execute`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
