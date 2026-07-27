@@ -19,6 +19,15 @@ app.use((req, res, next) => {
   express.json()(req, res, next)
 })
 
+// Root & Health Check Route
+app.get(['/', '/api', '/api/', '/api/health'], (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'CodeViit Express API Backend Server is running live!',
+    timestamp: new Date().toISOString()
+  })
+})
+
 const LANGUAGE_IDS = {
   c: 50,
   cpp: 54,
