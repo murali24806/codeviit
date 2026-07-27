@@ -3,7 +3,7 @@
 import { useEffect, useCallback, useState, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Play, Check } from "lucide-react"
+import { ArrowLeft, Play, Check, ChevronDown, ChevronUp, Terminal, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -15,12 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PageTransition } from "@/components/page-transition"
 import { CodeEditor } from "@/components/editor/code-editor"
 import { TestCaseManager } from "@/components/editor/test-case-manager"
 import { AIAssistant } from "@/components/editor/ai-assistant"
-import { ResultsPanel } from "@/components/editor/results-panel"
 import { useProblems } from "@/lib/problems-context"
 import { LANGUAGES, type TestCase, type TestResult, type Language } from "@/lib/types"
 
@@ -50,7 +48,8 @@ export default function EditorWithIdPage() {
   const [isRunning, setIsRunning] = useState(false)
   const [results, setResults] = useState<TestResult[]>([])
   const [consoleOutput, setConsoleOutput] = useState("")
-  const [mobileTab, setMobileTab] = useState<"problem" | "code">("problem")
+  const [isConsoleExpanded, setIsConsoleExpanded] = useState(true)
+  const [activeConsoleTab, setActiveConsoleTab] = useState<"testcases" | "result">("testcases")
   const [notFound, setNotFound] = useState(false)
 
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -63,7 +62,6 @@ export default function EditorWithIdPage() {
         if (!problem) {
           setNotFound(true)
         } else {
-          // Initialize local state from loaded problem
           setLocalTitle(problem.title || "")
           setLocalDescription(problem.description || "")
           setLocalCode(problem.code || "")
@@ -75,24 +73,20 @@ export default function EditorWithIdPage() {
     loadExistingProblem()
   }, [params.id])
 
-  // Debounced save to Supabase
+  // Debounced save
   const scheduleSave = useCallback((updates: any) => {
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current)
-    }
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
       updateProblem(updates)
     }, 2000)
   }, [updateProblem])
 
-  // Cleanup timer on unmount
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     }
   }, [])
 
-  // Handlers — update local state instantly, save to DB after delay
   const handleTitleChange = (title: string) => {
     setLocalTitle(title)
     scheduleSave({ title })
@@ -121,7 +115,9 @@ export default function EditorWithIdPage() {
   const handleRunCode = async () => {
     setIsRunning(true)
     setResults([])
-    setConsoleOutput("")
+    setConsoleOutput("Executing code...")
+    setActiveConsoleTab("result")
+    setIsConsoleExpanded(true)
 
     try {
       const response = await fetch(`${BACKEND_URL}/api/execute`, {
@@ -140,9 +136,9 @@ export default function EditorWithIdPage() {
         throw new Error(data.error || "Execution failed")
       }
 
-      setResults(data.results)
+      setResults(data.results || [])
       setConsoleOutput(
-        `Execution complete.\n${data.summary.passed}/${data.summary.total} test cases passed.`
+        `Execution Complete.\n${data.summary?.passed}/${data.summary?.total} test cases passed.`
       )
     } catch (error) {
       setConsoleOutput(
@@ -155,20 +151,20 @@ export default function EditorWithIdPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <Spinner className="w-8 h-8 text-white" />
+      <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
+        <Spinner className="w-8 h-8 text-emerald-500" />
       </div>
     )
   }
 
   if (notFound) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
-        <h1 className="text-2xl font-bold text-white">Problem not found</h1>
-        <p className="text-white/60">The problem you're looking for doesn't exist.</p>
+      <div className="min-h-screen bg-[#1a1a1a] text-white flex flex-col items-center justify-center gap-4">
+        <h1 className="text-2xl font-bold">Problem not found</h1>
+        <p className="text-zinc-400">The problem you're looking for doesn't exist.</p>
         <Button
           onClick={() => router.push("/dashboard")}
-          className="rounded-full bg-blue-500 hover:bg-blue-600 text-white mt-4"
+          className="rounded-full bg-blue-600 hover:bg-blue-500 text-white mt-4"
         >
           Go to Dashboard
         </Button>
@@ -176,22 +172,14 @@ export default function EditorWithIdPage() {
     )
   }
 
-  if (!currentProblem) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <Spinner className="w-8 h-8 text-white" />
-      </div>
-    )
-  }
-
   const SaveStatusIndicator = () => {
     if (saveStatus === "saving") {
-      return <span className="text-white/50 text-sm">Auto-saving...</span>
+      return <span className="text-zinc-400 text-xs font-mono">Saving...</span>
     }
     if (saveStatus === "saved") {
       return (
-        <span className="text-green-400 text-sm flex items-center gap-1">
-          <Check className="w-3 h-3" />
+        <span className="text-emerald-400 text-xs font-mono flex items-center gap-1 font-semibold">
+          <Check className="w-3.5 h-3.5" />
           Saved
         </span>
       )
@@ -201,222 +189,207 @@ export default function EditorWithIdPage() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-black">
-        {/* Top Bar */}
-        <div className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/10">
-          <div className="flex items-center justify-between px-4 h-14">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard"
-                className="text-white/60 hover:text-white transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Link>
-              <span className="text-xl font-bold text-white">CodeViit</span>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <SaveStatusIndicator />
-
-              <Select
-                value={localLanguage}
-                onValueChange={handleLanguageChange}
-              >
-                <SelectTrigger className="w-[140px] bg-white/5 border-white/10 text-white rounded-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-black/90 backdrop-blur-md border-white/10">
-                  {LANGUAGES.map((lang) => (
-                    <SelectItem
-                      key={lang.value}
-                      value={lang.value}
-                      className="text-white hover:bg-white/10 focus:bg-white/10"
-                    >
-                      {lang.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Button
-                onClick={handleRunCode}
-                disabled={isRunning}
-                className="rounded-full bg-blue-500 hover:bg-blue-600 text-white px-6 font-medium transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
-              >
-                {isRunning ? (
-                  <Spinner className="w-4 h-4" />
-                ) : (
-                  <>
-                    <Play className="w-4 h-4 mr-2" />
-                    Run Code
-                  </>
-                )}
-              </Button>
-            </div>
+      <div className="min-h-screen bg-[#1a1a1a] text-[#eff1f6] flex flex-col h-screen overflow-hidden font-sans">
+        
+        {/* Top Navigation Header (LeetCode Style) */}
+        <header className="bg-[#282828] border-b border-[#383838] px-4 h-12 flex items-center justify-between shrink-0 select-none z-50">
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard" className="text-zinc-400 hover:text-white transition-colors" title="Back to Dashboard">
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <div className="h-4 w-px bg-white/10 hidden sm:block" />
+            <span className="font-bold text-sm text-white tracking-wide">{localTitle || "Practice Sandbox"}</span>
           </div>
-        </div>
 
-        {/* Mobile Tabs */}
-        <div className="md:hidden">
-          <Tabs value={mobileTab} onValueChange={(v) => setMobileTab(v as "problem" | "code")}>
-            <TabsList className="w-full bg-white/5 border-b border-white/10 rounded-none h-12">
-              <TabsTrigger
-                value="problem"
-                className="flex-1 data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/60 rounded-none"
-              >
-                Problem
-              </TabsTrigger>
-              <TabsTrigger
-                value="code"
-                className="flex-1 data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/60 rounded-none"
-              >
-                Code
-              </TabsTrigger>
-            </TabsList>
+          <div className="flex items-center gap-3">
+            <SaveStatusIndicator />
 
-            <TabsContent value="problem" className="p-4 mt-0">
-              <ProblemPanel
-                title={localTitle}
-                description={localDescription}
+            <Select value={localLanguage} onValueChange={handleLanguageChange}>
+              <SelectTrigger className="w-[120px] bg-[#333] border-[#444] text-white rounded-md text-xs h-7 focus:ring-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-[#282828] border-[#444]">
+                {LANGUAGES.map((lang) => (
+                  <SelectItem key={lang.value} value={lang.value} className="text-white text-xs hover:bg-[#383838] focus:bg-[#383838]">
+                    {lang.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* LeetCode Run Button */}
+            <Button
+              onClick={handleRunCode}
+              disabled={isRunning}
+              size="sm"
+              className="h-7 rounded-md bg-[#2cbb5d] hover:bg-[#269e4f] text-white text-xs px-4 font-bold shadow-md transition-all"
+            >
+              {isRunning ? (
+                <Spinner className="w-3.5 h-3.5 text-white" />
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5 mr-1.5 fill-white" />
+                  Run Code
+                </>
+              )}
+            </Button>
+          </div>
+        </header>
+
+        {/* LeetCode IDE Split Layout */}
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-12 overflow-hidden bg-[#1a1a1a] p-1.5 gap-1.5">
+          
+          {/* Left Panel: Problem Creator & AI Assistant */}
+          <div className="md:col-span-5 bg-[#282828] rounded-xl border border-[#383838] flex flex-col overflow-hidden">
+            <div className="bg-[#222] border-b border-[#383838] px-3 h-10 flex items-center gap-2 shrink-0">
+              <span className="text-xs font-semibold text-white flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-blue-400" /> Problem Details & Testcases
+              </span>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-6">
+              <Input
+                value={localTitle}
+                onChange={(e) => handleTitleChange(e.target.value)}
+                placeholder="Problem Title"
+                className="bg-[#1e1e1e] border-[#383838] text-xl font-bold text-white placeholder:text-zinc-500 focus:border-blue-500"
+              />
+
+              <Textarea
+                value={localDescription}
+                onChange={(e) => handleDescriptionChange(e.target.value)}
+                placeholder="Describe your problem statement, constraints, and requirements..."
+                className="bg-[#1e1e1e] border-[#383838] text-sm text-zinc-300 placeholder:text-zinc-500 rounded-lg min-h-[140px] resize-y focus:border-blue-500"
+              />
+
+              <div className="h-px bg-[#383838]" />
+
+              <TestCaseManager
                 testCases={localTestCases}
-                onTitleChange={handleTitleChange}
-                onDescriptionChange={handleDescriptionChange}
-                onTestCasesChange={handleTestCasesChange}
-                code={localCode}
+                onUpdate={handleTestCasesChange}
               />
-            </TabsContent>
 
-            <TabsContent value="code" className="p-4 mt-0">
-              <CodePanel
+              <div className="h-px bg-[#383838]" />
+
+              <AIAssistant
+                problemDescription={localDescription}
                 code={localCode}
+                existingTestCases={localTestCases}
+                onTestCasesGenerated={handleTestCasesChange}
+              />
+            </div>
+          </div>
+
+          {/* Right Panel: Full Height Editor & Console Panel */}
+          <div className="md:col-span-7 flex flex-col h-full overflow-hidden">
+            
+            {/* Upper Section: Code Editor */}
+            <div className="flex-1 overflow-hidden min-h-[350px]">
+              <CodeEditor
+                value={localCode}
+                onChange={handleCodeChange}
                 language={localLanguage}
-                onCodeChange={handleCodeChange}
-                results={results}
-                consoleOutput={consoleOutput}
               />
-            </TabsContent>
-          </Tabs>
-        </div>
+            </div>
 
-        {/* Desktop Split View */}
-        <div className="hidden md:flex h-[calc(100vh-56px)]">
-          {/* Left Panel - Problem */}
-          <div className="w-1/2 border-r border-white/10 overflow-y-auto p-6">
-            <ProblemPanel
-              title={localTitle}
-              description={localDescription}
-              testCases={localTestCases}
-              onTitleChange={handleTitleChange}
-              onDescriptionChange={handleDescriptionChange}
-              onTestCasesChange={handleTestCasesChange}
-              code={localCode}
-            />
+            {/* Lower Section: Collapsible LeetCode Console Panel */}
+            <div className={`bg-[#282828] border border-[#383838] rounded-xl mt-1.5 flex flex-col transition-all ${
+              isConsoleExpanded ? "h-64 sm:h-72" : "h-10"
+            }`}>
+              <div className="bg-[#222] border-b border-[#383838] px-3 h-10 flex items-center justify-between shrink-0 select-none">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setActiveConsoleTab("testcases")
+                      setIsConsoleExpanded(true)
+                    }}
+                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+                      activeConsoleTab === "testcases" ? "bg-[#333] text-white" : "text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    Testcases ({localTestCases.length})
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveConsoleTab("result")
+                      setIsConsoleExpanded(true)
+                    }}
+                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                      activeConsoleTab === "result" ? "bg-[#333] text-white" : "text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    <Terminal className="w-3.5 h-3.5 text-emerald-400" /> Results Output
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setIsConsoleExpanded(!isConsoleExpanded)}
+                  className="text-zinc-400 hover:text-white p-1"
+                  title={isConsoleExpanded ? "Collapse Console" : "Expand Console"}
+                >
+                  {isConsoleExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {isConsoleExpanded && (
+                <div className="flex-1 overflow-y-auto p-4 font-mono text-xs text-[#d4d4d4]">
+                  {activeConsoleTab === "testcases" ? (
+                    <div className="space-y-3">
+                      {localTestCases.map((tc, idx) => (
+                        <div key={tc.id || idx} className="bg-[#1e1e1e] p-3 rounded-lg border border-[#383838] space-y-1.5">
+                          <span className="text-zinc-400 font-bold block text-[11px] uppercase">Case {idx + 1}:</span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            <div>Input: <span className="text-blue-300">{tc.input || "(empty)"}</span></div>
+                            <div>Expected: <span className="text-emerald-300">{tc.expectedOutput || "(empty)"}</span></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {consoleOutput && (
+                        <pre className="bg-[#1e1e1e] p-3 rounded-lg border border-[#383838] text-zinc-300 whitespace-pre-wrap">
+                          {consoleOutput}
+                        </pre>
+                      )}
+
+                      {results.length > 0 && (
+                        <div className="space-y-2.5">
+                          {results.map((res, idx) => (
+                            <div
+                              key={idx}
+                              className={`p-3 rounded-lg border ${
+                                res.passed
+                                  ? "bg-emerald-950/30 border-emerald-500/30 text-emerald-300"
+                                  : "bg-red-950/30 border-red-500/30 text-red-300"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="font-bold text-xs">Testcase {idx + 1}</span>
+                                <span className="font-bold text-[11px] uppercase">{res.passed ? "PASSED" : "FAILED"}</span>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-zinc-300 mt-2 font-mono">
+                                <div>Input: <span className="text-zinc-400">{res.input}</span></div>
+                                <div>Expected: <span className="text-zinc-400">{res.expectedOutput}</span></div>
+                                <div className="col-span-1 sm:col-span-2">
+                                  Output: <span className={res.passed ? "text-emerald-400 font-bold" : "text-red-400 font-bold"}>{res.actualOutput || "(empty)"}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
           </div>
 
-          {/* Right Panel - Code */}
-          <div className="w-1/2 overflow-y-auto p-6">
-            <CodePanel
-              code={localCode}
-              language={localLanguage}
-              onCodeChange={handleCodeChange}
-              results={results}
-              consoleOutput={consoleOutput}
-            />
-          </div>
         </div>
+
       </div>
     </PageTransition>
-  )
-}
-
-// Problem Panel Component
-interface ProblemPanelProps {
-  title: string
-  description: string
-  testCases: TestCase[]
-  onTitleChange: (title: string) => void
-  onDescriptionChange: (description: string) => void
-  onTestCasesChange: (testCases: TestCase[]) => void
-  code: string
-}
-
-function ProblemPanel({
-  title,
-  description,
-  testCases,
-  onTitleChange,
-  onDescriptionChange,
-  onTestCasesChange,
-  code,
-}: ProblemPanelProps) {
-  return (
-    <div className="flex flex-col gap-6">
-      {/* Title */}
-      <Input
-        value={title}
-        onChange={(e) => onTitleChange(e.target.value)}
-        placeholder="Untitled Problem"
-        className="bg-transparent border-0 text-2xl font-bold text-white placeholder:text-white/30 p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0"
-      />
-
-      {/* Description */}
-      <Textarea
-        value={description}
-        onChange={(e) => onDescriptionChange(e.target.value)}
-        placeholder="Describe your problem here..."
-        className="bg-white/5 border-white/10 text-white/70 placeholder:text-white/30 rounded-xl min-h-[120px] resize-none focus:ring-2 focus:ring-blue-500/50"
-      />
-
-      <div className="h-px bg-white/10" />
-
-      {/* Test Cases */}
-      <TestCaseManager
-        testCases={testCases}
-        onUpdate={onTestCasesChange}
-      />
-
-      <div className="h-px bg-white/10" />
-
-      {/* AI Assistant */}
-      <AIAssistant
-        problemDescription={description}
-        code={code}
-        existingTestCases={testCases}
-        onTestCasesGenerated={onTestCasesChange}
-      />
-    </div>
-  )
-}
-
-// Code Panel Component
-interface CodePanelProps {
-  code: string
-  language: string
-  onCodeChange: (code: string) => void
-  results: TestResult[]
-  consoleOutput: string
-}
-
-function CodePanel({
-  code,
-  language,
-  onCodeChange,
-  results,
-  consoleOutput,
-}: CodePanelProps) {
-  return (
-    <div className="flex flex-col gap-6">
-      {/* Code Editor */}
-      <CodeEditor
-        value={code}
-        onChange={onCodeChange}
-        language={language}
-      />
-
-      {/* Results */}
-      {results.length > 0 && (
-        <ResultsPanel results={results} consoleOutput={consoleOutput} />
-      )}
-    </div>
   )
 }

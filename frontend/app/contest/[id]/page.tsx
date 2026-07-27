@@ -3,7 +3,10 @@
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Play, Send, Trophy, Clock, CheckCircle2, XCircle, AlertTriangle, Layers, Code } from "lucide-react"
+import { 
+  ArrowLeft, Play, Send, Clock, CheckCircle2, XCircle, 
+  RotateCcw, ChevronUp, ChevronDown, Copy, Check, Terminal, FileText, Layers 
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -54,6 +57,13 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
     totalCount: number
   } | null>(null)
 
+  // UI Panels state (LeetCode Style)
+  const [activeLeftTab, setActiveLeftTab] = useState<"description" | "submissions">("description")
+  const [activeConsoleTab, setActiveConsoleTab] = useState<"testcase" | "result">("testcase")
+  const [isConsoleExpanded, setIsConsoleExpanded] = useState(true)
+  const [activeTestCaseIndex, setActiveTestCaseIndex] = useState(0)
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
+
   // Timer state
   const [timeRemaining, setTimeRemaining] = useState<string>("")
   const [mobileTab, setMobileTab] = useState<"problem" | "code" | "output">("problem")
@@ -89,7 +99,7 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
       const diff = end - now
 
       if (diff <= 0) {
-        setTimeRemaining("Contest Ended")
+        setTimeRemaining("Ended")
         return
       }
 
@@ -112,13 +122,21 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
     setCode(DEFAULT_STARTER_CODE[l] || `# Code here in ${l}`)
   }
 
+  const handleResetCode = () => {
+    if (confirm("Reset code to starter template?")) {
+      setCode(DEFAULT_STARTER_CODE[selectedLanguage] || "")
+    }
+  }
+
   // Run Code against Sample Test Cases
   const handleRunSampleCases = async () => {
     if (!currentQuestion) return
     setIsRunning(true)
     setResults([])
     setSubmissionFeedback(null)
-    setConsoleOutput("Compiling and executing sample test cases...")
+    setActiveConsoleTab("result")
+    setIsConsoleExpanded(true)
+    setConsoleOutput("Compiling and executing test cases...")
     setMobileTab("output")
 
     try {
@@ -140,7 +158,7 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
       if (!res.ok) throw new Error(data.error || "Execution failed")
 
       setResults(data.results || [])
-      setConsoleOutput(`Execution Completed.\nPassed: ${data.summary?.passed}/${data.summary?.total} test cases.`)
+      setConsoleOutput(`Execution Finished.\nPassed: ${data.summary?.passed}/${data.summary?.total} test cases.`)
     } catch (err: any) {
       setConsoleOutput(`Error: ${err.message || "Failed to execute code"}`)
     } finally {
@@ -154,6 +172,8 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
     setIsSubmitting(true)
     setResults([])
     setSubmissionFeedback(null)
+    setActiveConsoleTab("result")
+    setIsConsoleExpanded(true)
     setConsoleOutput("Evaluating submission against contest test cases...")
     setMobileTab("output")
 
@@ -192,17 +212,23 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
     }
   }
 
+  const handleCopyText = (text: string, index: number) => {
+    navigator.clipboard.writeText(text)
+    setCopiedIndex(index)
+    setTimeout(() => setCopiedIndex(null), 2000)
+  }
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <Spinner className="w-8 h-8 text-blue-500" />
+      <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
+        <Spinner className="w-8 h-8 text-emerald-500" />
       </div>
     )
   }
 
   if (!contest) {
     return (
-      <div className="min-h-screen bg-black text-white p-8 text-center">
+      <div className="min-h-screen bg-[#1a1a1a] text-white p-8 text-center flex flex-col items-center justify-center">
         <h2 className="text-xl font-bold mb-4">Contest Not Found</h2>
         <Link href="/dashboard">
           <Button variant="outline" className="border-white/10 text-white">Back to Dashboard</Button>
@@ -213,174 +239,268 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-black text-white flex flex-col">
+      <div className="min-h-screen bg-[#1a1a1a] text-[#eff1f6] flex flex-col h-screen overflow-hidden font-sans">
         
-        {/* Top Header Navigation */}
-        <header className="bg-black/90 border-b border-white/10 px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between sticky top-0 z-50 gap-2">
-          <div className="flex items-center gap-2 sm:gap-4">
-            <Link href="/dashboard" className="text-zinc-400 hover:text-white transition-colors">
-              <ArrowLeft className="w-5 h-5" />
+        {/* LeetCode Style Top Navigation Header */}
+        <header className="bg-[#282828] border-b border-[#383838] px-4 h-12 flex items-center justify-between shrink-0 select-none z-50">
+          
+          {/* Left Brand & Title */}
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard" className="text-zinc-400 hover:text-white transition-colors" title="Back to Dashboard">
+              <ArrowLeft className="w-4 h-4" />
             </Link>
-            <div>
-              <span className="font-bold text-sm sm:text-base text-white">{contest.title}</span>
-              <span className="text-xs text-zinc-500 ml-2 hidden sm:inline">Participant: {user?.name} ({user?.registrationNumber || 'Student'})</span>
+            <div className="h-4 w-px bg-white/10 hidden sm:block" />
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm text-white tracking-wide">{contest.title}</span>
+              <span className="text-[11px] text-zinc-400 hidden lg:inline bg-[#333] px-2 py-0.5 rounded font-mono">
+                {user?.name || 'Student'} ({user?.registrationNumber || 'Guest'})
+              </span>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-            {/* Live Clock */}
-            <div className="flex items-center gap-1.5 bg-blue-950/80 border border-blue-800/60 px-2.5 sm:px-3 py-1 rounded-full text-xs font-mono font-bold text-blue-300">
-              <Clock className="w-3.5 h-3.5" />
+          {/* Problem Selector Pills */}
+          <div className="hidden md:flex items-center gap-1 bg-[#1e1e1e] p-1 rounded-lg border border-[#383838]">
+            {contest.questions?.map((q, idx) => (
+              <button
+                key={q.id}
+                onClick={() => {
+                  setActiveQuestionIndex(idx)
+                  setResults([])
+                  setSubmissionFeedback(null)
+                }}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                  activeQuestionIndex === idx
+                    ? "bg-[#333] text-white shadow-sm font-bold"
+                    : "text-zinc-400 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <span>{idx + 1}. {q.title}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Right Action Bar (LeetCode Style) */}
+          <div className="flex items-center gap-2.5">
+            {/* Live Clock Badge */}
+            <div className="flex items-center gap-1.5 bg-[#1e1e1e] border border-blue-500/40 px-2.5 py-1 rounded-md text-xs font-mono font-bold text-blue-400">
+              <Clock className="w-3.5 h-3.5 text-blue-400" />
               <span>{timeRemaining || "00:00:00"}</span>
             </div>
 
+            {/* Language Selector */}
             <Select value={selectedLanguage} onValueChange={handleLanguageChange}>
-              <SelectTrigger className="w-[110px] sm:w-[130px] bg-white/5 border-white/10 text-white rounded-full text-xs h-8">
+              <SelectTrigger className="w-[110px] bg-[#333] border-[#444] text-white rounded-md text-xs h-7 focus:ring-0">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-zinc-900 border-white/10">
+              <SelectContent className="bg-[#282828] border-[#444]">
                 {LANGUAGES.map((lang) => (
-                  <SelectItem key={lang.value} value={lang.value} className="text-white text-xs">
+                  <SelectItem key={lang.value} value={lang.value} className="text-white text-xs hover:bg-[#383838] focus:bg-[#383838]">
                     {lang.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
+            {/* Reset Code */}
+            <button
+              onClick={handleResetCode}
+              className="p-1.5 text-zinc-400 hover:text-white bg-[#333] hover:bg-[#444] rounded-md transition-colors"
+              title="Reset Code"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+
+            {/* LeetCode Run Button */}
             <Button
               onClick={handleRunSampleCases}
               disabled={isRunning || isSubmitting}
               size="sm"
-              variant="outline"
-              className="rounded-full border-white/10 text-zinc-300 hover:text-white text-xs px-3"
+              className="h-7 rounded-md bg-[#333] hover:bg-[#444] text-zinc-200 hover:text-white text-xs px-3 font-semibold border border-[#444] transition-all"
             >
-              {isRunning ? <Spinner className="w-3.5 h-3.5" /> : <><Play className="w-3.5 h-3.5 mr-1" /> Run Code</>}
+              {isRunning ? <Spinner className="w-3.5 h-3.5 text-white" /> : <><Play className="w-3.5 h-3.5 mr-1 text-zinc-300 fill-zinc-300" /> Run</>}
             </Button>
 
+            {/* LeetCode Submit Button */}
             <Button
               onClick={handleSubmitSolution}
               disabled={isRunning || isSubmitting}
               size="sm"
-              className="rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 sm:px-4 font-semibold shadow-lg shadow-emerald-600/20"
+              className="h-7 rounded-md bg-[#2cbb5d] hover:bg-[#269e4f] text-white text-xs px-3 sm:px-4 font-bold shadow-md transition-all"
             >
-              {isSubmitting ? <Spinner className="w-3.5 h-3.5" /> : <><Send className="w-3.5 h-3.5 mr-1" /> Submit</>}
+              {isSubmitting ? <Spinner className="w-3.5 h-3.5 text-white" /> : <><Send className="w-3.5 h-3.5 mr-1.5 fill-white" /> Submit</>}
             </Button>
           </div>
         </header>
 
-        {/* Problem Tabs Header */}
-        <div className="bg-zinc-950 border-b border-white/10 px-4 flex items-center gap-2 overflow-x-auto h-11 text-nowrap">
-          {contest.questions?.map((q, idx) => (
-            <button
-              key={q.id}
-              onClick={() => {
-                setActiveQuestionIndex(idx)
-                setResults([])
-                setSubmissionFeedback(null)
-              }}
-              className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 shrink-0 ${
-                activeQuestionIndex === idx
-                  ? "bg-blue-600 text-white shadow"
-                  : "text-zinc-400 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              <span>P{idx + 1}. {q.title}</span>
-            </button>
-          ))}
-        </div>
-
         {/* Mobile View Switcher */}
-        <div className="lg:hidden flex bg-zinc-900 border-b border-white/10">
+        <div className="lg:hidden flex bg-[#282828] border-b border-[#383838]">
           <button
             onClick={() => setMobileTab("problem")}
-            className={`flex-1 py-2.5 text-xs font-semibold text-center border-b-2 transition-all ${
-              mobileTab === "problem" ? "border-blue-500 text-blue-400 bg-white/5" : "border-transparent text-zinc-400"
+            className={`flex-1 py-2 text-xs font-semibold text-center border-b-2 transition-all ${
+              mobileTab === "problem" ? "border-emerald-500 text-emerald-400 bg-[#333]" : "border-transparent text-zinc-400"
             }`}
           >
             Problem Statement
           </button>
           <button
             onClick={() => setMobileTab("code")}
-            className={`flex-1 py-2.5 text-xs font-semibold text-center border-b-2 transition-all ${
-              mobileTab === "code" ? "border-blue-500 text-blue-400 bg-white/5" : "border-transparent text-zinc-400"
+            className={`flex-1 py-2 text-xs font-semibold text-center border-b-2 transition-all ${
+              mobileTab === "code" ? "border-emerald-500 text-emerald-400 bg-[#333]" : "border-transparent text-zinc-400"
             }`}
           >
             Code Editor
           </button>
           <button
             onClick={() => setMobileTab("output")}
-            className={`flex-1 py-2.5 text-xs font-semibold text-center border-b-2 transition-all ${
-              mobileTab === "output" ? "border-blue-500 text-blue-400 bg-white/5" : "border-transparent text-zinc-400"
+            className={`flex-1 py-2 text-xs font-semibold text-center border-b-2 transition-all ${
+              mobileTab === "output" ? "border-emerald-500 text-emerald-400 bg-[#333]" : "border-transparent text-zinc-400"
             }`}
           >
-            Output & Results
+            Console Output
           </button>
         </div>
 
-        {/* Main Workspace (Split View on Desktop, Tabbed on Mobile) */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
+        {/* LeetCode Split Workspace (Full Screen IDE Layout) */}
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden bg-[#1a1a1a] p-1.5 gap-1.5">
           
-          {/* Left Column: Problem Description */}
-          <div className={`lg:col-span-5 border-r border-white/10 overflow-y-auto p-4 sm:p-6 space-y-6 max-h-[calc(100vh-140px)] ${
-            mobileTab === "problem" ? "block" : "hidden lg:block"
+          {/* LEFT PANEL: Problem Description (LeetCode Style) */}
+          <div className={`lg:col-span-5 bg-[#282828] rounded-xl border border-[#383838] flex flex-col overflow-hidden ${
+            mobileTab === "problem" ? "block" : "hidden lg:flex"
           }`}>
-            {currentQuestion ? (
-              <>
-                <div>
-                  <h1 className="text-2xl font-extrabold text-white mb-2">{currentQuestion.title}</h1>
-                  {currentQuestion.constraints && (
-                    <span className="inline-block bg-zinc-900 border border-zinc-800 text-zinc-400 text-xs px-2.5 py-0.5 rounded-full">
-                      Constraints: {currentQuestion.constraints}
-                    </span>
-                  )}
-                </div>
+            {/* Problem Navigation Tabs */}
+            <div className="bg-[#222] border-b border-[#383838] px-3 h-10 flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setActiveLeftTab("description")}
+                className={`px-3 py-1 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                  activeLeftTab === "description" ? "bg-[#333] text-white" : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5 text-blue-400" /> Description
+              </button>
+              <button
+                onClick={() => setActiveLeftTab("submissions")}
+                className={`px-3 py-1 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                  activeLeftTab === "submissions" ? "bg-[#333] text-white" : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <Terminal className="w-3.5 h-3.5 text-emerald-400" /> Submissions
+              </button>
+            </div>
 
-                <div className="text-sm text-zinc-300 leading-relaxed whitespace-pre-line">
-                  {currentQuestion.description || "No problem statement provided."}
-                </div>
-
-                {currentQuestion.inputFormat && (
-                  <div>
-                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1">Input Format</h3>
-                    <p className="text-xs text-zinc-300 bg-white/5 p-3 rounded-xl border border-white/5">{currentQuestion.inputFormat}</p>
-                  </div>
-                )}
-
-                {currentQuestion.outputFormat && (
-                  <div>
-                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1">Output Format</h3>
-                    <p className="text-xs text-zinc-300 bg-white/5 p-3 rounded-xl border border-white/5">{currentQuestion.outputFormat}</p>
-                  </div>
-                )}
-
-                {currentQuestion.testCases?.[0] && (
-                  <div>
-                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Example Test Case</h3>
-                    <div className="space-y-2">
-                      <div className="bg-zinc-900 p-3 rounded-xl border border-white/5 text-xs font-mono">
-                        <span className="text-zinc-500 block text-[10px] uppercase mb-1">Input:</span>
-                        <pre className="text-blue-300">{currentQuestion.testCases[0].input}</pre>
+            {/* Problem Tab Content */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-5 text-sm text-[#d4d4d4] leading-relaxed">
+              {currentQuestion ? (
+                activeLeftTab === "description" ? (
+                  <>
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h1 className="text-xl font-bold text-white tracking-tight">
+                          {activeQuestionIndex + 1}. {currentQuestion.title}
+                        </h1>
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          Medium
+                        </span>
                       </div>
-                      <div className="bg-zinc-900 p-3 rounded-xl border border-white/5 text-xs font-mono">
-                        <span className="text-zinc-500 block text-[10px] uppercase mb-1">Output:</span>
-                        <pre className="text-emerald-300">{currentQuestion.testCases[0].expectedOutput}</pre>
-                      </div>
+
+                      {currentQuestion.constraints && (
+                        <div className="inline-block bg-[#1e1e1e] border border-[#383838] text-zinc-400 text-xs px-2.5 py-1 rounded-md font-mono mb-3">
+                          Constraints: {currentQuestion.constraints}
+                        </div>
+                      )}
                     </div>
+
+                    {/* Problem Statement */}
+                    <div className="prose prose-invert max-w-none text-zinc-300 whitespace-pre-line text-sm leading-relaxed">
+                      {currentQuestion.description || "No problem statement provided."}
+                    </div>
+
+                    {/* Input Format */}
+                    {currentQuestion.inputFormat && (
+                      <div className="space-y-1.5 pt-2">
+                        <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Input Format</h3>
+                        <div className="bg-[#1e1e1e] p-3 rounded-lg border border-[#383838] text-xs text-zinc-300 font-mono">
+                          {currentQuestion.inputFormat}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Output Format */}
+                    {currentQuestion.outputFormat && (
+                      <div className="space-y-1.5 pt-2">
+                        <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Output Format</h3>
+                        <div className="bg-[#1e1e1e] p-3 rounded-lg border border-[#383838] text-xs text-zinc-300 font-mono">
+                          {currentQuestion.outputFormat}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Example Testcases */}
+                    {currentQuestion.testCases?.map((tc, idx) => (
+                      <div key={tc.id || idx} className="space-y-2 pt-2">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xs font-bold text-zinc-300">Example {idx + 1}:</h3>
+                          <button
+                            onClick={() => handleCopyText(tc.input, idx)}
+                            className="text-xs text-zinc-400 hover:text-white flex items-center gap-1"
+                          >
+                            {copiedIndex === idx ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                            {copiedIndex === idx ? "Copied" : "Copy Input"}
+                          </button>
+                        </div>
+                        <div className="bg-[#1e1e1e] p-3.5 rounded-lg border border-[#383838] space-y-2 text-xs font-mono">
+                          <div>
+                            <span className="text-zinc-500 font-semibold block text-[11px] uppercase mb-0.5">Input:</span>
+                            <pre className="text-blue-300 whitespace-pre-wrap">{tc.input || "(empty)"}</pre>
+                          </div>
+                          <div>
+                            <span className="text-zinc-500 font-semibold block text-[11px] uppercase mb-0.5">Output:</span>
+                            <pre className="text-emerald-400 whitespace-pre-wrap">{tc.expectedOutput || "(empty)"}</pre>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  /* Submissions Tab */
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold text-white mb-2">Submission History</h3>
+                    {submissionFeedback ? (
+                      <div className={`p-4 rounded-xl border ${
+                        submissionFeedback.status === "Accepted"
+                          ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
+                          : "bg-red-950/40 border-red-500/40 text-red-300"
+                      }`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-bold text-sm flex items-center gap-2">
+                            {submissionFeedback.status === "Accepted" ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <XCircle className="w-4 h-4 text-red-400" />}
+                            {submissionFeedback.status}
+                          </span>
+                          <span className="text-xs font-mono font-bold">{submissionFeedback.score}%</span>
+                        </div>
+                        <p className="text-xs opacity-90 font-mono mt-1">
+                          Test Cases Passed: {submissionFeedback.passedCount} / {submissionFeedback.totalCount}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 text-zinc-500 text-xs">
+                        No submissions recorded for this problem yet.
+                      </div>
+                    )}
                   </div>
-                )}
-              </>
-            ) : (
-              <div className="text-zinc-500 text-center py-12">Select a question to view statement.</div>
-            )}
+                )
+              ) : (
+                <div className="text-zinc-500 text-center py-12">Select a question to view statement.</div>
+              )}
+            </div>
           </div>
 
-          {/* Right Column: Code Editor & Console Output */}
-          <div className={`lg:col-span-7 flex flex-col h-[calc(100vh-140px)] ${
+          {/* RIGHT PANEL: Code Editor & LeetCode Console */}
+          <div className={`lg:col-span-7 flex flex-col h-full overflow-hidden ${
             mobileTab === "problem" ? "hidden lg:flex" : "flex"
           }`}>
             
-            {/* Editor Area */}
-            <div className={`flex-1 bg-zinc-950 p-2 relative overflow-hidden ${
+            {/* Upper Section: Full Flex Code Editor */}
+            <div className={`flex-1 overflow-hidden min-h-[350px] ${
               mobileTab === "output" ? "hidden lg:block" : "block"
             }`}>
               <CodeEditor
@@ -390,64 +510,144 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
               />
             </div>
 
-            {/* Submission / Execution Feedback Panel */}
-            <div className={`border-t border-white/10 bg-black p-4 overflow-y-auto font-mono text-xs ${
-              mobileTab === "code" ? "hidden lg:block lg:h-64" : "flex-1 lg:h-64"
+            {/* Lower Section: Collapsible LeetCode Console Panel */}
+            <div className={`bg-[#282828] border border-[#383838] rounded-xl mt-1.5 flex flex-col transition-all ${
+              isConsoleExpanded ? "h-64 sm:h-72" : "h-10"
             }`}>
-              
-              {submissionFeedback && (
-                <div className={`p-4 rounded-xl mb-4 border ${
-                  submissionFeedback.status === "Accepted"
-                    ? "bg-emerald-950/80 border-emerald-500/50 text-emerald-300"
-                    : "bg-red-950/80 border-red-500/50 text-red-300"
-                }`}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-sm flex items-center gap-2">
-                      {submissionFeedback.status === "Accepted" ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <XCircle className="w-5 h-5 text-red-400" />}
-                      {submissionFeedback.status}
-                    </span>
-                    <span className="text-xs font-bold">Score: {submissionFeedback.score}%</span>
-                  </div>
-                  <p className="text-xs opacity-90">
-                    Passed {submissionFeedback.passedCount} out of {submissionFeedback.totalCount} test cases.
-                  </p>
+              {/* Console Bar Controls */}
+              <div className="bg-[#222] border-b border-[#383838] px-3 h-10 flex items-center justify-between shrink-0 select-none">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setActiveConsoleTab("testcase")
+                      setIsConsoleExpanded(true)
+                    }}
+                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+                      activeConsoleTab === "testcase" ? "bg-[#333] text-white" : "text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    Testcase
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveConsoleTab("result")
+                      setIsConsoleExpanded(true)
+                    }}
+                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                      activeConsoleTab === "result" ? "bg-[#333] text-white" : "text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    Test Result
+                    {submissionFeedback && (
+                      <span className={`w-2 h-2 rounded-full ${submissionFeedback.status === "Accepted" ? "bg-emerald-500" : "bg-red-500"}`} />
+                    )}
+                  </button>
                 </div>
-              )}
 
-              <div className="text-zinc-400 font-semibold mb-2 flex items-center justify-between">
-                <span>Execution Output & Test Results:</span>
+                <button
+                  onClick={() => setIsConsoleExpanded(!isConsoleExpanded)}
+                  className="text-zinc-400 hover:text-white p-1"
+                  title={isConsoleExpanded ? "Collapse Console" : "Expand Console"}
+                >
+                  {isConsoleExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                </button>
               </div>
 
-              {consoleOutput && (
-                <pre className="text-zinc-300 bg-zinc-900/80 p-3 rounded-xl border border-white/5 mb-3 whitespace-pre-wrap">
-                  {consoleOutput}
-                </pre>
-              )}
-
-              {results.length > 0 && (
-                <div className="space-y-2">
-                  {results.map((res, idx) => (
-                    <div
-                      key={idx}
-                      className={`p-3 rounded-xl border ${
-                        res.passed
-                          ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-300"
-                          : "bg-red-950/40 border-red-500/30 text-red-300"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-semibold text-xs">Test Case #{idx + 1}</span>
-                        <span>{res.passed ? "PASSED" : "FAILED"}</span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-zinc-300 mt-2 font-mono">
-                        <div>Input: <span className="text-zinc-400">{res.input}</span></div>
-                        <div>Expected: <span className="text-zinc-400">{res.expectedOutput}</span></div>
-                        <div className="col-span-1 sm:col-span-2">
-                          Actual Output: <span className={res.passed ? "text-emerald-400 font-bold" : "text-red-400 font-bold"}>{res.actualOutput || "(empty)"}</span>
-                        </div>
-                      </div>
+              {/* Console Body */}
+              {isConsoleExpanded && (
+                <div className="flex-1 overflow-y-auto p-4 font-mono text-xs text-[#d4d4d4]">
+                  
+                  {activeConsoleTab === "testcase" && (
+                    <div className="space-y-3">
+                      {currentQuestion?.testCases && currentQuestion.testCases.length > 0 ? (
+                        <>
+                          <div className="flex items-center gap-2">
+                            {currentQuestion.testCases.map((_, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => setActiveTestCaseIndex(idx)}
+                                className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+                                  activeTestCaseIndex === idx
+                                    ? "bg-[#333] text-white border border-[#444]"
+                                    : "bg-[#1e1e1e] text-zinc-400 hover:text-white"
+                                }`}
+                              >
+                                Case {idx + 1}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="space-y-2">
+                            <span className="text-zinc-400 font-semibold block">Input =</span>
+                            <pre className="bg-[#1e1e1e] p-3 rounded-lg border border-[#383838] text-blue-300 whitespace-pre-wrap">
+                              {currentQuestion.testCases[activeTestCaseIndex]?.input || "(empty)"}
+                            </pre>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-zinc-500 py-4">No test cases configured for this problem.</div>
+                      )}
                     </div>
-                  ))}
+                  )}
+
+                  {activeConsoleTab === "result" && (
+                    <div className="space-y-3">
+                      {/* Submission Feedback Banner */}
+                      {submissionFeedback && (
+                        <div className={`p-3.5 rounded-xl border ${
+                          submissionFeedback.status === "Accepted"
+                            ? "bg-emerald-950/60 border-emerald-500/50 text-emerald-300"
+                            : "bg-red-950/60 border-red-500/50 text-red-300"
+                        }`}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-sm flex items-center gap-2">
+                              {submissionFeedback.status === "Accepted" ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <XCircle className="w-5 h-5 text-red-400" />}
+                              {submissionFeedback.status}
+                            </span>
+                            <span className="text-xs font-bold">Score: {submissionFeedback.score}%</span>
+                          </div>
+                          <p className="text-xs opacity-90">
+                            Passed {submissionFeedback.passedCount} out of {submissionFeedback.totalCount} test cases.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Execution Console Logs */}
+                      {consoleOutput && (
+                        <pre className="bg-[#1e1e1e] p-3 rounded-lg border border-[#383838] text-zinc-300 whitespace-pre-wrap">
+                          {consoleOutput}
+                        </pre>
+                      )}
+
+                      {/* Detailed Test Results */}
+                      {results.length > 0 && (
+                        <div className="space-y-2.5">
+                          {results.map((res, idx) => (
+                            <div
+                              key={idx}
+                              className={`p-3 rounded-lg border ${
+                                res.passed
+                                  ? "bg-emerald-950/30 border-emerald-500/30 text-emerald-300"
+                                  : "bg-red-950/30 border-red-500/30 text-red-300"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="font-bold text-xs">Testcase {idx + 1}</span>
+                                <span className="font-bold text-[11px] uppercase">{res.passed ? "PASSED" : "FAILED"}</span>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-zinc-300 mt-2 font-mono">
+                                <div>Input: <span className="text-zinc-400">{res.input}</span></div>
+                                <div>Expected: <span className="text-zinc-400">{res.expectedOutput}</span></div>
+                                <div className="col-span-1 sm:col-span-2">
+                                  Output: <span className={res.passed ? "text-emerald-400 font-bold" : "text-red-400 font-bold"}>{res.actualOutput || "(empty)"}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                 </div>
               )}
             </div>
