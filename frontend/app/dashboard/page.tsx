@@ -11,6 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/lib/auth-context"
 import { useProblems } from "@/lib/problems-context"
 import type { Contest } from "@/lib/types"
+import { ActivityCalendar } from "@/components/activity-calendar"
+import { CircularProgress } from "@/components/circular-progress"
 
 const getBackendUrl = () => {
   if (process.env.NEXT_PUBLIC_API_URL) {
@@ -36,12 +38,14 @@ export default function DashboardPage() {
     attemptedContestIds: string[]
     contestScores: Record<string, number>
     totalSubmissions: number
+    submissions: any[]
   }>({
     totalPoints: 0,
     contestsAttemptedCount: 0,
     attemptedContestIds: [],
     contestScores: {},
-    totalSubmissions: 0
+    totalSubmissions: 0,
+    submissions: []
   })
 
   useEffect(() => {
@@ -79,7 +83,8 @@ export default function DashboardPage() {
           contestsAttemptedCount: data.contestsAttemptedCount || 0,
           attemptedContestIds: data.attemptedContestIds || [],
           contestScores: data.contestScores || {},
-          totalSubmissions: data.totalSubmissions || 0
+          totalSubmissions: data.totalSubmissions || 0,
+          submissions: data.submissions || []
         })
       }
     } catch (err) {
@@ -177,35 +182,19 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* STUDENT STATS CARDS */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
-            <div className="bg-gradient-to-br from-amber-950/40 to-yellow-950/20 border border-yellow-500/30 rounded-2xl p-5 flex items-center gap-4 shadow-lg shadow-amber-950/20">
-              <div className="w-12 h-12 rounded-xl bg-yellow-500/20 border border-yellow-500/40 flex items-center justify-center text-yellow-400 shrink-0">
-                <Trophy className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-xs text-yellow-300/80 uppercase font-semibold tracking-wider">Total Points</p>
-                <h3 className="text-2xl font-black text-white mt-0.5">{userStats.totalPoints} <span className="text-sm font-normal text-yellow-400 font-mono">pts</span></h3>
+          {/* STUDENT STATS CARDS (LEETCODE STYLE) */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+            <div className="col-span-1 flex flex-col h-full">
+              <h2 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-3">Overall Progress</h2>
+              <div className="flex-1">
+                <CircularProgress totalPoints={userStats.totalPoints} totalContests={userStats.contestsAttemptedCount} />
               </div>
             </div>
-
-            <div className="bg-gradient-to-br from-blue-950/40 to-indigo-950/20 border border-blue-500/30 rounded-2xl p-5 flex items-center gap-4 shadow-lg shadow-blue-950/20">
-              <div className="w-12 h-12 rounded-xl bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-400 shrink-0">
-                <CheckCircle2 className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-xs text-blue-300/80 uppercase font-semibold tracking-wider">Contests Attempted</p>
-                <h3 className="text-2xl font-black text-white mt-0.5">{userStats.contestsAttemptedCount} <span className="text-sm font-normal text-blue-400">contests</span></h3>
-              </div>
-            </div>
-
-            <div className="bg-gradient-to-br from-purple-950/40 to-zinc-900 border border-purple-500/30 rounded-2xl p-5 flex items-center gap-4 shadow-lg shadow-purple-950/20">
-              <div className="w-12 h-12 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 shrink-0">
-                <FileCode2 className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-xs text-purple-300/80 uppercase font-semibold tracking-wider">Submissions Sent</p>
-                <h3 className="text-2xl font-black text-white mt-0.5">{userStats.totalSubmissions} <span className="text-sm font-normal text-zinc-400">attempts</span></h3>
+            
+            <div className="col-span-1 lg:col-span-2 flex flex-col h-full">
+              <h2 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-3">Submission Activity</h2>
+              <div className="flex-1">
+                <ActivityCalendar submissions={userStats.submissions} />
               </div>
             </div>
           </div>
