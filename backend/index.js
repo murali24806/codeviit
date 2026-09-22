@@ -200,14 +200,17 @@ app.post('/api/execute', verifyToken, async (req, res) => {
         const compileOutput = submitRes.data.compile_output?.trim() || submitRes.data.message || ''
         const errorOutput = submitRes.data.stderr?.trim() || compileOutput
         const isHidden = testCase.isHidden === true
+        const pts = testCase.points !== undefined ? Number(testCase.points) : Math.round(100 / testCases.length)
         
         return {
           input: isHidden ? "Hidden Test Case" : testCase.input,
           expectedOutput: isHidden ? "Hidden" : expected,
-          actualOutput: isHidden ? "Hidden" : output,
-          passed: output === expected,
+          actualOutput: isHidden && passed ? "Hidden" : output,
+          passed,
           error: errorOutput || null,
-          status: submitRes.data.status?.description || 'Unknown'
+          status: submitRes.data.status?.description || 'Unknown',
+          points: pts,
+          isHidden: isHidden
         }
       })
     )
@@ -216,7 +219,9 @@ app.post('/api/execute', verifyToken, async (req, res) => {
       summary: {
         total: results.length,
         passed: results.filter(r => r.passed).length,
-        failed: results.filter(r => !r.passed).length
+        failed: results.filter(r => !r.passed).length,
+        totalPoints: results.reduce((sum, r) => sum + r.points, 0),
+        earnedPoints: results.filter(r => r.passed).reduce((sum, r) => sum + r.points, 0)
       }
     })
   } catch (error) {
@@ -402,6 +407,7 @@ app.post('/api/contests/:id/submit', verifyToken, async (req, res) => {
           if (passed) passedCount++
 
           const isHidden = tc.isHidden === true
+          const pts = tc.points !== undefined ? Number(tc.points) : Math.round(100 / testCases.length)
 
           return {
             input: isHidden ? "Hidden Test Case" : tc.input,
@@ -409,14 +415,18 @@ app.post('/api/contests/:id/submit', verifyToken, async (req, res) => {
             actualOutput: isHidden && passed ? "Hidden" : output,
             passed,
             error: errorOutput || null,
-            status: submitRes.data.status?.description || 'Unknown'
+            status: submitRes.data.status?.description || 'Unknown',
+            points: pts,
+            isHidden: isHidden
           }
         })
       )
     }
 
     const totalCount = testCases.length || 1
-    const score = Math.round((passedCount / totalCount) * 100)
+    const totalPossibleScore = testResults.reduce((sum, r) => sum + r.points, 0) || 100
+    const earnedScore = testResults.filter(r => r.passed).reduce((sum, r) => sum + r.points, 0)
+    const score = Math.round((earnedScore / totalPossibleScore) * 100)
     const status = passedCount === totalCount ? 'Accepted' : passedCount > 0 ? 'Partially Accepted' : 'Wrong Answer'
 
     const submission = await storage.saveSubmission({

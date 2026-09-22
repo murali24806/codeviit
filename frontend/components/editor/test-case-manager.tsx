@@ -27,7 +27,7 @@ export function TestCaseManager({ testCases, onUpdate }: TestCaseManagerProps) {
     }
   }
 
-  const updateTestCase = (id: string, field: "input" | "expectedOutput" | "isHidden", value: string | boolean) => {
+  const updateTestCase = (id: string, field: "input" | "expectedOutput" | "isHidden" | "points", value: string | boolean | number) => {
     onUpdate(
       testCases.map((tc) =>
         tc.id === id ? { ...tc, [field]: value } : tc
@@ -89,6 +89,25 @@ export function TestCaseManager({ testCases, onUpdate }: TestCaseManagerProps) {
                   onChange={(e) => updateTestCase(testCase.id, "expectedOutput", e.target.value)}
                   placeholder="Enter expected output..."
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-lg text-sm font-mono min-h-[60px] resize-none focus:ring-2 focus:ring-blue-500/50"
+                />
+              </div>
+              <div className="w-1/3">
+                <label className="text-xs text-white/50 mb-1 block">Points</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  placeholder={`Auto (${Math.round(100 / testCases.length)})`}
+                  value={testCase.points !== undefined ? testCase.points : ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "") {
+                      updateTestCase(testCase.id, "points", undefined as any);
+                    } else {
+                      updateTestCase(testCase.id, "points", parseInt(val) || 0);
+                    }
+                  }}
+                  className="w-full bg-white/5 border border-white/10 text-white placeholder:text-white/30 rounded-lg text-sm font-mono p-2 focus:ring-2 focus:ring-blue-500/50 outline-none"
                 />
               </div>
             </div>
