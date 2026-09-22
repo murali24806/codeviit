@@ -11,11 +11,18 @@ export function ActivityCalendar({ submissions }: ActivityCalendarProps) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
+  const toLocalDateString = (d: Date) => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+
   const activityMap = useMemo(() => {
     const map = new Map<string, number>()
     submissions.forEach(sub => {
       const date = new Date(sub.submittedAt)
-      const dateString = date.toISOString().split('T')[0]
+      const dateString = toLocalDateString(date)
       map.set(dateString, (map.get(dateString) || 0) + 1)
     })
     return map
@@ -44,7 +51,7 @@ export function ActivityCalendar({ submissions }: ActivityCalendarProps) {
         // Pad the rest of the week if necessary
         currentWeek.push(null)
       } else {
-        const dateStr = current.toISOString().split('T')[0]
+        const dateStr = toLocalDateString(current)
         currentWeek.push({
           date: dateStr,
           count: activityMap.get(dateStr) || 0
