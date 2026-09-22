@@ -421,11 +421,13 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
                 <div className={`p-4 rounded-xl border ${
                   submissionFeedback.status === "Accepted"
                     ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
+                    : submissionFeedback.status === "Partially Accepted"
+                    ? "bg-yellow-950/40 border-yellow-500/40 text-yellow-300"
                     : "bg-red-950/40 border-red-500/40 text-red-300"
                 }`}>
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-bold text-sm flex items-center gap-2">
-                      {submissionFeedback.status === "Accepted" ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <XCircle className="w-4 h-4 text-red-400" />}
+                      {submissionFeedback.status === "Accepted" ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : submissionFeedback.status === "Partially Accepted" ? <AlertTriangle className="w-4 h-4 text-yellow-400" /> : <XCircle className="w-4 h-4 text-red-400" />}
                       {submissionFeedback.status}
                     </span>
                     <span className="text-xs font-mono font-bold">{submissionFeedback.score}%</span>
@@ -578,12 +580,14 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
             {submissionFeedback && (
               <div className={`p-3.5 rounded-xl border ${
                 submissionFeedback.status === "Accepted"
-                  ? "bg-emerald-950/60 border-emerald-500/50 text-emerald-300"
-                  : "bg-red-950/60 border-red-500/50 text-red-300"
+                  ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
+                  : submissionFeedback.status === "Partially Accepted"
+                  ? "bg-yellow-950/40 border-yellow-500/40 text-yellow-300"
+                  : "bg-red-950/40 border-red-500/40 text-red-300"
               }`}>
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-1.5">
                   <span className="font-bold text-sm flex items-center gap-2">
-                    {submissionFeedback.status === "Accepted" ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <XCircle className="w-5 h-5 text-red-400" />}
+                    {submissionFeedback.status === "Accepted" ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : submissionFeedback.status === "Partially Accepted" ? <AlertTriangle className="w-5 h-5 text-yellow-400" /> : <XCircle className="w-5 h-5 text-red-400" />}
                     {submissionFeedback.status}
                   </span>
                   <span className="text-xs font-bold">Score: {submissionFeedback.score}%</span>

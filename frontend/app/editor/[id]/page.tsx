@@ -296,23 +296,27 @@ export default function EditorWithIdPage() {
                   {results.map((res, idx) => (
                     <div
                       key={idx}
-                      className={`p-3 rounded-lg border ${
+                      className={`p-3.5 rounded-xl border ${
                         res.passed
-                          ? "bg-emerald-950/30 border-emerald-500/30 text-emerald-300"
-                          : "bg-red-950/30 border-red-500/30 text-red-300"
+                          ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
+                          : res.status === "Partially Accepted"
+                          ? "bg-yellow-950/40 border-yellow-500/40 text-yellow-300"
+                          : "bg-red-950/40 border-red-500/40 text-red-300"
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center justify-between mb-1.5">
                         <span className="font-bold text-xs">Testcase {idx + 1}</span>
-                        <span className="font-bold text-[11px] uppercase">{res.passed ? "PASSED" : "FAILED"}</span>
+                        <span className="font-bold text-[11px] uppercase">
+                          {res.passed ? "PASSED" : res.status === "Partially Accepted" ? "PARTIALLY ACCEPTED" : "FAILED"}
+                        </span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-zinc-300 mt-2 font-mono">
                       {res.input === "Hidden Test Case" || res.isHidden ? (
                         <div className="col-span-1 sm:col-span-2 text-center py-3 bg-black/20 rounded-lg border border-white/5">
                           <span className="font-bold block text-xs mb-1">🔒 Hidden Test Case {idx + 1}</span>
                           <div className="flex items-center justify-center gap-2">
-                            <span className={res.passed ? "text-emerald-400" : "text-red-400"}>
-                              {res.passed ? "Passed" : "Failed"}
+                            <span className={res.passed ? "text-emerald-400" : res.status === "Partially Accepted" ? "text-yellow-400" : "text-red-400"}>
+                              {res.passed ? "Passed" : res.status === "Partially Accepted" ? "Partially Accepted" : "Failed"}
                             </span>
                             <span className="text-zinc-500">•</span>
                             <span className="text-purple-400 font-bold">
