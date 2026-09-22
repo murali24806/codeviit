@@ -57,6 +57,8 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
     totalCount: number
   } | null>(null)
 
+  const [userSubmissions, setUserSubmissions] = useState<ContestSubmission[]>([])
+
   const [activeLeftTab, setActiveLeftTab] = useState<"description" | "submissions" | "leaderboard">("description")
   const [leaderboard, setLeaderboard] = useState<any[] | null>(null)
   const [activeConsoleTab, setActiveConsoleTab] = useState<"testcase" | "result">("testcase")
@@ -78,7 +80,36 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
       if (res.ok) {
         const data = await res.json()
         setContest(data.contest)
-        if (data.contest?.questions?.[0]) {
+        
+        let previousCode = null;
+        let previousLang = "python" as Language;
+        
+        // Fetch user stats to get previous submissions
+        try {
+          const statsRes = await authFetch(`${BACKEND_URL}/api/user/stats`)
+          if (statsRes.ok) {
+            const statsData = await statsRes.json()
+            if (statsData.submissions) {
+              setUserSubmissions(statsData.submissions)
+              // check for first question submission
+              const firstQ = data.contest?.questions?.[0]
+              if (firstQ) {
+                const sub = statsData.submissions.sort((a: any, b: any) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()).find((s: any) => s.contestId === contestId && s.questionId === firstQ.id)
+                if (sub) {
+                  previousCode = sub.code
+                  previousLang = (sub.language as Language) || "python"
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error fetching user stats:", e)
+        }
+
+        if (previousCode) {
+          setSelectedLanguage(previousLang)
+          setCode(previousCode)
+        } else if (data.contest?.questions?.[0]) {
           setCode(DEFAULT_STARTER_CODE["python"])
         }
       }
@@ -222,6 +253,10 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
       if (!res.ok) throw new Error(data.error || "Submission failed")
 
       const sub = data.submission
+      
+      // Update local submissions list
+      setUserSubmissions(prev => [sub, ...prev])
+
       setResults(sub.testResults || [])
       setSubmissionFeedback({
         status: sub.status,
@@ -606,6 +641,15 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
                   setActiveQuestionIndex(idx)
                   setResults([])
                   setSubmissionFeedback(null)
+                  
+                  // Load previous submission if exists
+                  const sub = userSubmissions.sort((a: any, b: any) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()).find((s: any) => s.contestId === contest.id && s.questionId === q.id)
+                  if (sub) {
+                    setSelectedLanguage((sub.language as Language) || "python")
+                    setCode(sub.code)
+                  } else {
+                    setCode(DEFAULT_STARTER_CODE[selectedLanguage] || "")
+                  }
                 }}
                 className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
                   activeQuestionIndex === idx

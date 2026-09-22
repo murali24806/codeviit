@@ -264,7 +264,7 @@ export default function AdminPage() {
     }
   }
 
-  const filteredSubmissions = submissions.filter((s) => {
+  const filteredSubmissionsRaw = submissions.filter((s) => {
     const query = searchQuery.toLowerCase()
     return (
       s.userName?.toLowerCase().includes(query) ||
@@ -273,6 +273,26 @@ export default function AdminPage() {
       s.questionTitle?.toLowerCase().includes(query)
     )
   })
+
+  const filteredSubmissions = Object.values(
+    filteredSubmissionsRaw.reduce((acc, sub) => {
+      const key = `${sub.contestId}_${sub.userId || sub.userName}`;
+      if (!acc[key]) {
+        acc[key] = { ...sub, submissionsCount: 1 };
+      } else {
+        acc[key].submissionsCount = (acc[key].submissionsCount || 1) + 1;
+        if (new Date(sub.submittedAt).getTime() > new Date(acc[key].submittedAt).getTime()) {
+          acc[key].status = sub.status;
+          acc[key].score = sub.score;
+          acc[key].submittedAt = sub.submittedAt;
+          acc[key].code = sub.code;
+          acc[key].language = sub.language;
+          acc[key].questionTitle = sub.questionTitle;
+        }
+      }
+      return acc;
+    }, {} as Record<string, ContestSubmission & { submissionsCount?: number }>)
+  ).sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())
 
   const handleExportSubmissionsCSV = (targetContestId?: string) => {
     const listToExport = targetContestId 
@@ -818,9 +838,10 @@ export default function AdminPage() {
                       <tr>
                         <th className="px-6 py-4">Student</th>
                         <th className="px-6 py-4">Reg Number</th>
-                        <th className="px-6 py-4">Contest & Problem</th>
-                        <th className="px-6 py-4">Status & Score</th>
-                        <th className="px-6 py-4">Submitted At</th>
+                        <th className="px-6 py-4">Contest & Last Problem</th>
+                        <th className="px-6 py-4">Total Submissions</th>
+                        <th className="px-6 py-4">Latest Status & Score</th>
+                        <th className="px-6 py-4">Latest Submitted At</th>
                         <th className="px-6 py-4 text-right">Action</th>
                       </tr>
                     </thead>
@@ -832,6 +853,9 @@ export default function AdminPage() {
                           <td className="px-6 py-4">
                             <div className="text-xs font-semibold text-purple-400">{sub.contestTitle}</div>
                             <div className="text-xs text-zinc-400">{sub.questionTitle}</div>
+                          </td>
+                          <td className="px-6 py-4 text-xs text-blue-400 font-semibold">
+                            {sub.submissionsCount || 1}
                           </td>
                           <td className="px-6 py-4">
                             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${
