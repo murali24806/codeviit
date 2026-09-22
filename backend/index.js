@@ -124,13 +124,14 @@ app.post('/api/auth/google-login', async (req, res) => {
 
 // Update User Profile (Onboarding / Edits)
 app.post('/api/user/profile', verifyToken, async (req, res) => {
-  const { registrationNumber, branch, section, collegeName, profilePhotoUrl } = req.body
+  const { name, registrationNumber, branch, section, collegeName, profilePhotoUrl } = req.body
   
   let user = await storage.findUserByEmail(req.user.email)
   if (!user) return res.status(404).json({ error: 'User not found' })
   
   user = await storage.saveUser({
     ...user,
+    ...(name ? { name } : {}),
     registrationNumber,
     branch,
     section,

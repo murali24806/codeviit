@@ -14,6 +14,7 @@ export default function ProfilePage() {
   const router = useRouter()
   const { user, isLoggedIn, isLoading, authFetch, logout } = useAuth()
 
+  const [name, setName] = useState("")
   const [registrationNumber, setRegistrationNumber] = useState("")
   const [branch, setBranch] = useState("")
   const [section, setSection] = useState("")
@@ -31,6 +32,7 @@ export default function ProfilePage() {
     }
 
     if (user) {
+      setName(user.name || "")
       setRegistrationNumber(user.registrationNumber || "")
       setBranch(user.branch || "")
       setSection(user.section || "")
@@ -99,6 +101,7 @@ export default function ProfilePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          name,
           registrationNumber,
           branch,
           section,
@@ -110,11 +113,10 @@ export default function ProfilePage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to update profile")
       
-      // Update local storage session
       const stored = localStorage.getItem("runit_user_session")
       if (stored) {
         const u = JSON.parse(stored)
-        const updated = { ...u, registrationNumber, branch, section, collegeName, profilePhotoUrl }
+        const updated = { ...u, name, registrationNumber, branch, section, collegeName, profilePhotoUrl }
         localStorage.setItem("runit_user_session", JSON.stringify(updated))
       }
       
@@ -192,6 +194,23 @@ export default function ProfilePage() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-300 mb-2 uppercase tracking-wide">
+                    Full Name <span className="text-red-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <UserIcon className="absolute left-3.5 top-3 h-4 w-4 text-zinc-500" />
+                    <Input
+                      type="text"
+                      placeholder="e.g. John Doe"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="pl-10 py-5 bg-zinc-900/60 border-zinc-800 focus:border-blue-500 text-white placeholder:text-zinc-600 rounded-xl"
+                      required
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-zinc-300 mb-2 uppercase tracking-wide">
                     Roll Number / Reg No. <span className="text-red-400">*</span>
