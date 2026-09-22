@@ -56,6 +56,8 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
     score: number
     passedCount: number
     totalCount: number
+    hiddenPassedCount?: number
+    hiddenTotalCount?: number
   } | null>(null)
 
   const [userSubmissions, setUserSubmissions] = useState<ContestSubmission[]>([])
@@ -265,13 +267,19 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
       setUserSubmissions(prev => [sub, ...prev])
 
       setResults(sub.testResults || [])
+      
+      const hiddenTotalCount = (sub.testResults || []).filter((r: any) => r.isHidden).length
+      const hiddenPassedCount = (sub.testResults || []).filter((r: any) => r.isHidden && r.passed).length
+      
       setSubmissionFeedback({
         status: sub.status,
         score: sub.score,
         passedCount: sub.passedCount,
-        totalCount: sub.totalCount
+        totalCount: sub.totalCount,
+        hiddenPassedCount,
+        hiddenTotalCount
       })
-      setConsoleOutput(`Submission Evaluated!\nStatus: ${sub.status}\nScore: ${sub.score}%\nTest Cases Passed: ${sub.passedCount}/${sub.totalCount}`)
+      setConsoleOutput(`Submission Evaluated!\nStatus: ${sub.status}\nScore: ${sub.score}%\nTest Cases Passed: ${sub.passedCount}/${sub.totalCount}\nHidden Test Cases: ${hiddenPassedCount}/${hiddenTotalCount}`)
     } catch (err: any) {
       setConsoleOutput(`Error: ${err.message || "Failed to submit solution"}`)
     } finally {
@@ -418,8 +426,13 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
                     <span className="text-xs font-mono font-bold">{submissionFeedback.score}%</span>
                   </div>
                   <p className="text-xs opacity-90 font-mono mt-1">
-                    Test Cases Passed: {submissionFeedback.passedCount} / {submissionFeedback.totalCount}
+                    Public Test Cases Passed: {submissionFeedback.passedCount - (submissionFeedback.hiddenPassedCount || 0)} / {submissionFeedback.totalCount - (submissionFeedback.hiddenTotalCount || 0)}
                   </p>
+                  {(submissionFeedback.hiddenTotalCount || 0) > 0 && (
+                    <p className="text-xs opacity-90 font-mono mt-1 text-purple-300">
+                      Hidden Test Cases Passed: {submissionFeedback.hiddenPassedCount} / {submissionFeedback.hiddenTotalCount}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-12 text-zinc-500 text-xs">
@@ -571,8 +584,13 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
                   <span className="text-xs font-bold">Score: {submissionFeedback.score}%</span>
                 </div>
                 <p className="text-xs opacity-90">
-                  Passed {submissionFeedback.passedCount} out of {submissionFeedback.totalCount} test cases.
+                  Public Test Cases: {submissionFeedback.passedCount - (submissionFeedback.hiddenPassedCount || 0)} / {submissionFeedback.totalCount - (submissionFeedback.hiddenTotalCount || 0)} passed.
                 </p>
+                {(submissionFeedback.hiddenTotalCount || 0) > 0 && (
+                  <p className="text-xs opacity-90 mt-0.5 text-purple-300 font-medium">
+                    Hidden Test Cases: {submissionFeedback.hiddenPassedCount} / {submissionFeedback.hiddenTotalCount} passed.
+                  </p>
+                )}
               </div>
             )}
 
