@@ -280,28 +280,40 @@ export default function DashboardPage() {
                           <div className="col-span-2 flex items-center gap-1.5 text-zinc-400 pt-1 border-t border-white/5">
                             <Calendar className="w-3.5 h-3.5 text-purple-400" />
                             <span>
-                              {new Date(contest.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(contest.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({new Date(contest.startTime).toLocaleDateString()})
+                              {new Date(contest.startTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })} - {new Date(contest.endTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                             </span>
                           </div>
                         </div>
                       </div>
 
-                      <Link href={`/contest/${contest.id}`}>
-                        <Button
-                          className={`w-full rounded-xl font-medium transition-all ${
-                            status === "live"
-                              ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20"
-                              : status === "upcoming"
-                              ? "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20"
-                              : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
-                          }`}
-                        >
-                          <span className="flex items-center justify-center gap-2">
-                            {status === "live" ? "Enter Live Contest" : status === "upcoming" ? "View Contest Details" : "View Problems & Practice"}
-                            <ArrowRight className="w-4 h-4" />
-                          </span>
-                        </Button>
-                      </Link>
+                      <div className="flex flex-col gap-2">
+                        <Link href={`/contest/${contest.id}`}>
+                          <Button
+                            className={`w-full rounded-xl font-medium transition-all ${
+                              status === "live"
+                                ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20"
+                                : status === "upcoming"
+                                ? "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20"
+                                : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
+                            }`}
+                          >
+                            <span className="flex items-center justify-center gap-2">
+                              {status === "live" ? "Enter Live Contest" : status === "upcoming" ? "View Contest Details" : "View Problems & Practice"}
+                              <ArrowRight className="w-4 h-4" />
+                            </span>
+                          </Button>
+                        </Link>
+                        {contest.resultsPublished && (
+                          <Link href={`/contest/${contest.id}?tab=leaderboard`}>
+                            <Button
+                              variant="outline"
+                              className="w-full rounded-xl font-medium border-yellow-500/30 text-yellow-400 hover:bg-yellow-950/40 transition-all"
+                            >
+                              <Trophy className="w-4 h-4 mr-2" /> View Leaderboard & Results
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
                     </div>
                   )
                 })}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, use } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { 
   ArrowLeft, Play, Send, Clock, CheckCircle2, XCircle, 
@@ -38,6 +38,7 @@ const DEFAULT_STARTER_CODE: Record<string, string> = {
 export default function ContestArenaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: contestId } = use(params)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, authFetch, isLoading: isAuthLoading } = useAuth()
 
   const [contest, setContest] = useState<Contest | null>(null)
@@ -72,7 +73,11 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     if (isAuthLoading) return;
     fetchContestDetails()
-  }, [contestId, isAuthLoading])
+    
+    if (searchParams.get("tab") === "leaderboard") {
+      setActiveLeftTab("leaderboard")
+    }
+  }, [contestId, isAuthLoading, searchParams])
 
   const fetchContestDetails = async () => {
     setIsLoading(true)
