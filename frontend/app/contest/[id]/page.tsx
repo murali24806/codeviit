@@ -600,7 +600,7 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-zinc-300 mt-2 font-mono">
                       {res.input === "Hidden Test Case" || res.isHidden ? (
                         <div className="col-span-1 sm:col-span-2 text-center py-3 bg-black/20 rounded-lg border border-white/5">
-                          <span className="font-bold block text-xs mb-1">🔒 Hidden Test Case</span>
+                          <span className="font-bold block text-xs mb-1">🔒 Hidden Test Case {idx + 1}</span>
                           <div className="flex items-center justify-center gap-2">
                             <span className={res.passed ? "text-emerald-400" : "text-red-400"}>
                               {res.passed ? "Passed" : "Failed"}
