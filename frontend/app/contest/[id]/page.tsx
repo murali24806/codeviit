@@ -224,7 +224,13 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
       if (!res.ok) throw new Error(data.error || "Execution failed")
 
       setResults(data.results || [])
-      setConsoleOutput(`Execution Finished.\nPassed: ${data.summary?.passed}/${data.summary?.total} test cases.`)
+      const hiddenCount = currentQuestion.testCases?.filter(tc => tc.isHidden).length || 0
+      
+      let outStr = `Execution Finished.\nPassed: ${data.summary?.passed}/${data.summary?.total} public test cases.`
+      if (hiddenCount > 0) {
+        outStr += `\n(Note: ${hiddenCount} hidden test case${hiddenCount > 1 ? 's' : ''} will be evaluated when you click Submit)`
+      }
+      setConsoleOutput(outStr)
     } catch (err: any) {
       setConsoleOutput(`Error: ${err.message || "Failed to execute code"}`)
     } finally {
