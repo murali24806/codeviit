@@ -74,6 +74,7 @@ export default function DashboardPage() {
       if (user.email) params.append("email", user.email)
       if (user.id) params.append("userId", user.id)
       if (user.registrationNumber) params.append("registrationNumber", user.registrationNumber)
+      params.append("t", Date.now().toString())
 
       const res = await authFetch(`${BACKEND_URL}/api/user/stats?${params.toString()}`)
       if (res.ok) {

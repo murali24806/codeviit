@@ -21,7 +21,8 @@ export function ActivityCalendar({ submissions }: ActivityCalendarProps) {
   const activityMap = useMemo(() => {
     const map = new Map<string, number>()
     submissions.forEach(sub => {
-      const date = new Date(sub.submittedAt)
+      const dateVal = sub.submittedAt || sub.createdAt || new Date().toISOString()
+      const date = new Date(dateVal)
       const dateString = toLocalDateString(date)
       map.set(dateString, (map.get(dateString) || 0) + 1)
     })
@@ -79,6 +80,10 @@ export function ActivityCalendar({ submissions }: ActivityCalendarProps) {
         </h3>
         <div className="text-xs text-zinc-400">
           <span className="font-bold text-white">{submissions.length}</span> submissions in the last {days} days
+          {/* DEBUG: Remove later */}
+          <span className="ml-2 text-emerald-400">
+            [Today ({toLocalDateString(today)}): {activityMap.get(toLocalDateString(today)) || 0}]
+          </span>
         </div>
       </div>
       
