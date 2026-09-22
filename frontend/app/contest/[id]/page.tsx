@@ -198,8 +198,9 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
     setMobileTab("output")
 
     try {
-      const testCasesToRun = currentQuestion.testCases?.length > 0
-        ? currentQuestion.testCases
+      const visibleTestCases = currentQuestion.testCases?.filter(tc => !tc.isHidden) || []
+      const testCasesToRun = visibleTestCases.length > 0
+        ? visibleTestCases
         : [{ id: "sample", input: currentQuestion.sampleInput || "", expectedOutput: currentQuestion.sampleOutput || "" }]
 
       const res = await authFetch(`${BACKEND_URL}/api/execute`, {
@@ -519,10 +520,10 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
       <div className="flex-1 overflow-y-auto p-4 font-mono text-xs text-[#d4d4d4]">
         {activeConsoleTab === "testcase" && (
           <div className="space-y-3">
-            {currentQuestion?.testCases && currentQuestion.testCases.length > 0 ? (
+            {currentQuestion?.testCases && currentQuestion.testCases.filter(tc => !tc.isHidden).length > 0 ? (
               <>
                 <div className="flex items-center gap-2">
-                  {currentQuestion.testCases.map((_, idx) => (
+                  {currentQuestion.testCases.filter(tc => !tc.isHidden).map((_, idx) => (
                     <button
                       key={idx}
                       onClick={() => setActiveTestCaseIndex(idx)}
@@ -539,7 +540,7 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
                 <div className="space-y-2">
                   <span className="text-zinc-400 font-semibold block">Input =</span>
                   <pre className="bg-[#1a1a1a] p-3 rounded-lg border border-[#3e3e42] text-blue-300 whitespace-pre-wrap">
-                    {currentQuestion.testCases[activeTestCaseIndex]?.input || "(empty)"}
+                    {currentQuestion.testCases.filter(tc => !tc.isHidden)[activeTestCaseIndex]?.input || "(empty)"}
                   </pre>
                 </div>
               </>
