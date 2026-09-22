@@ -91,7 +91,7 @@ export function TestCaseManager({ testCases, onUpdate }: TestCaseManagerProps) {
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-lg text-sm font-mono min-h-[60px] resize-none focus:ring-2 focus:ring-blue-500/50"
                 />
               </div>
-              <div className="w-1/3">
+              <div className="w-full sm:w-1/3">
                 <label className="text-xs text-white/50 mb-1 block">Points</label>
                 <input
                   type="number"
