@@ -622,20 +622,20 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
         {/* LeetCode Style Top Navigation Header */}
         <header className="bg-[#282828] border-b border-[#3e3e42] px-4 h-12 flex items-center justify-between shrink-0 select-none z-50">
           
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="text-zinc-400 hover:text-white transition-colors" title="Back to Dashboard">
+          <div className="flex items-center gap-2 sm:gap-3 overflow-hidden whitespace-nowrap min-w-0">
+            <Link href="/dashboard" className="text-zinc-400 hover:text-white transition-colors shrink-0" title="Back to Dashboard">
               <ArrowLeft className="w-4 h-4" />
             </Link>
-            <div className="h-4 w-px bg-[#3e3e42] hidden sm:block" />
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm text-white tracking-wide">{contest.title}</span>
-              <span className="text-[11px] text-zinc-400 hidden lg:inline bg-[#3e3e42] px-2 py-0.5 rounded font-mono">
+            <div className="h-4 w-px bg-[#3e3e42] hidden sm:block shrink-0" />
+            <div className="flex items-center gap-2 overflow-hidden min-w-0">
+              <span className="font-bold text-xs sm:text-sm text-white tracking-wide truncate">{contest.title}</span>
+              <span className="text-[10px] sm:text-[11px] text-zinc-400 hidden lg:inline bg-[#3e3e42] px-2 py-0.5 rounded font-mono shrink-0">
                 {user?.name || 'Student'} ({user?.registrationNumber || 'Guest'})
               </span>
             </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-1 bg-[#1a1a1a] p-1 rounded-lg border border-[#3e3e42]">
+          <div className="hidden lg:flex items-center gap-1 bg-[#1a1a1a] p-1 rounded-lg border border-[#3e3e42] overflow-x-auto no-scrollbar max-w-[30%]">
             {contest.questions?.map((q, idx) => (
               <button
                 key={q.id}
@@ -653,7 +653,7 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
                     setCode(DEFAULT_STARTER_CODE[selectedLanguage] || "")
                   }
                 }}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                className={`px-2 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                   activeQuestionIndex === idx
                     ? "bg-[#3e3e42] text-white shadow-sm font-bold"
                     : "text-zinc-400 hover:text-white hover:bg-white/5"
@@ -664,14 +664,14 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
             ))}
           </div>
 
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-1.5 bg-[#1a1a1a] border border-blue-500/40 px-2.5 py-1 rounded-md text-xs font-mono font-bold text-blue-400">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            <div className="hidden sm:flex items-center gap-1.5 bg-[#1a1a1a] border border-blue-500/40 px-2 py-1 rounded-md text-xs font-mono font-bold text-blue-400">
               <Clock className="w-3.5 h-3.5 text-blue-400" />
-              <span>{timeRemaining || "00:00:00"}</span>
+              <span>{timeRemaining || "00:00"}</span>
             </div>
 
             <Select value={selectedLanguage} onValueChange={handleLanguageChange}>
-              <SelectTrigger className="w-[110px] bg-[#3e3e42] border-[#444] text-white rounded-md text-xs h-7 focus:ring-0">
+              <SelectTrigger className="w-[80px] sm:w-[110px] bg-[#3e3e42] border-[#444] text-white rounded-md text-xs h-7 focus:ring-0 px-2">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-[#282828] border-[#444]">
@@ -685,7 +685,7 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
 
             <button
               onClick={handleResetCode}
-              className="p-1.5 text-zinc-400 hover:text-white bg-[#3e3e42] hover:bg-[#444] rounded-md transition-colors"
+              className="p-1.5 text-zinc-400 hover:text-white bg-[#3e3e42] hover:bg-[#444] rounded-md transition-colors hidden sm:block"
               title="Reset Code"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -695,21 +695,60 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
               onClick={handleRunSampleCases}
               disabled={isRunning || isSubmitting}
               size="sm"
-              className="h-7 rounded-md bg-[#3e3e42] hover:bg-[#444] text-zinc-200 hover:text-white text-xs px-3 font-semibold border border-[#444] transition-all"
+              className="h-7 rounded-md bg-[#3e3e42] hover:bg-[#444] text-zinc-200 hover:text-white text-xs px-2 sm:px-3 font-semibold border border-[#444] transition-all"
             >
-              {isRunning ? <Spinner className="w-3.5 h-3.5 text-white" /> : <><Play className="w-3.5 h-3.5 mr-1 text-zinc-300 fill-zinc-300" /> Run</>}
+              {isRunning ? <Spinner className="w-3.5 h-3.5 text-white" /> : <><Play className="w-3.5 h-3.5 sm:mr-1 text-zinc-300 fill-zinc-300" /><span className="hidden sm:inline">Run</span></>}
             </Button>
 
             <Button
               onClick={handleSubmitSolution}
               disabled={isRunning || isSubmitting}
               size="sm"
-              className="h-7 rounded-md bg-[#2cbb5d] hover:bg-[#269e4f] text-white text-xs px-3 sm:px-4 font-bold shadow-md transition-all"
+              className="h-7 rounded-md bg-[#2cbb5d] hover:bg-[#269e4f] text-white text-xs px-2 sm:px-4 font-bold shadow-md transition-all"
             >
-              {isSubmitting ? <Spinner className="w-3.5 h-3.5 text-white" /> : <><Send className="w-3.5 h-3.5 mr-1.5 fill-white" /> Submit</>}
+              {isSubmitting ? <Spinner className="w-3.5 h-3.5 text-white" /> : <><Send className="w-3 h-3 sm:w-3.5 sm:h-3.5 sm:mr-1.5 fill-white" /><span className="hidden sm:inline">Submit</span></>}
             </Button>
           </div>
         </header>
+
+        {/* Mobile secondary header for Question Selector and Timer */}
+        <div className="lg:hidden flex items-center justify-between bg-[#1a1a1a] px-3 py-1.5 border-b border-[#3e3e42] shrink-0">
+          <Select 
+            value={activeQuestionIndex.toString()} 
+            onValueChange={(val) => {
+              const idx = parseInt(val);
+              setActiveQuestionIndex(idx);
+              setResults([]);
+              setSubmissionFeedback(null);
+              const q = contest.questions[idx];
+              if (q) {
+                const sub = userSubmissions.sort((a: any, b: any) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()).find((s: any) => s.contestId === contest.id && s.questionId === q.id)
+                if (sub) {
+                  setSelectedLanguage((sub.language as Language) || "python")
+                  setCode(sub.code)
+                } else {
+                  setCode(DEFAULT_STARTER_CODE[selectedLanguage] || "")
+                }
+              }
+            }}
+          >
+            <SelectTrigger className="w-full max-w-[200px] bg-[#282828] border-[#3e3e42] text-white rounded-md text-xs h-7 focus:ring-0">
+              <SelectValue placeholder="Select Problem" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#282828] border-[#444] max-h-48">
+              {contest.questions?.map((q, idx) => (
+                <SelectItem key={q.id} value={idx.toString()} className="text-white text-xs hover:bg-[#383838]">
+                  {idx + 1}. {q.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <div className="flex items-center gap-1.5 bg-[#282828] px-2 py-1 rounded border border-[#3e3e42] text-xs font-mono font-bold text-blue-400">
+            <Clock className="w-3 h-3 text-blue-400" />
+            <span>{timeRemaining || "00:00"}</span>
+          </div>
+        </div>
 
         {/* Mobile View Switcher */}
         <div className="lg:hidden flex bg-[#282828] border-b border-[#3e3e42]">
@@ -780,17 +819,19 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
         </div>
 
         {/* Mobile Main Content (Tabs) */}
-        <div className="lg:hidden flex-1 overflow-hidden grid grid-cols-1 p-1.5">
-          <div className={`bg-[#282828] border border-[#3e3e42] rounded-xl flex-col overflow-hidden ${mobileTab === "problem" ? "flex" : "hidden"}`}>
+        <div className="lg:hidden flex-1 overflow-hidden flex flex-col p-1.5 gap-1.5">
+          <div className={`flex-1 bg-[#282828] border border-[#3e3e42] rounded-xl flex-col overflow-hidden ${mobileTab === "problem" ? "flex" : "hidden"}`}>
             {LeftPanelContent}
           </div>
-          <div className={`flex-col h-full overflow-hidden ${mobileTab === "code" || mobileTab === "output" ? "flex" : "hidden"}`}>
-            <div className={`flex-1 overflow-hidden min-h-[300px] mb-1.5 border border-[#3e3e42] rounded-xl ${mobileTab === "output" ? "hidden" : "block"}`}>
+          
+          <div className={`flex-1 flex-col h-full overflow-hidden ${mobileTab === "code" ? "flex" : "hidden"}`}>
+            <div className="flex-1 overflow-hidden border border-[#3e3e42] rounded-xl flex flex-col">
               <CodeEditor value={code} onChange={setCode} language={selectedLanguage} />
             </div>
-            <div className={`h-full border border-[#3e3e42] rounded-xl overflow-hidden ${mobileTab === "output" ? "block" : "hidden"}`}>
-              {ConsoleContent}
-            </div>
+          </div>
+
+          <div className={`flex-1 flex-col h-full border border-[#3e3e42] rounded-xl overflow-hidden ${mobileTab === "output" ? "flex" : "hidden"}`}>
+            {ConsoleContent}
           </div>
         </div>
 
