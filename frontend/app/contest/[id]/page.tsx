@@ -598,16 +598,42 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
                       <span className="font-bold text-[11px] uppercase">{res.passed ? "PASSED" : "FAILED"}</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-zinc-300 mt-2 font-mono">
-                      <div>Input: <span className="text-zinc-400">{res.input}</span></div>
-                      <div>Expected: <span className="text-zinc-400">{res.expectedOutput}</span></div>
-                      <div className="col-span-1 sm:col-span-2">
-                        Output: <span className={res.passed ? "text-emerald-400 font-bold" : "text-red-400 font-bold"}>{res.actualOutput || "(empty)"}</span>
-                      </div>
-                      {res.error && (
-                        <div className="col-span-1 sm:col-span-2 mt-2 bg-red-950/40 p-2 rounded border border-red-500/20 text-red-300">
-                          <span className="font-bold block mb-1">Error / Compiler Output:</span>
-                          <pre className="whitespace-pre-wrap">{res.error}</pre>
+                      {res.input === "Hidden Test Case" || res.isHidden ? (
+                        <div className="col-span-1 sm:col-span-2 text-center py-3 bg-black/20 rounded-lg border border-white/5">
+                          <span className="font-bold block text-xs mb-1">🔒 Hidden Test Case</span>
+                          <div className="flex items-center justify-center gap-2">
+                            <span className={res.passed ? "text-emerald-400" : "text-red-400"}>
+                              {res.passed ? "Passed" : "Failed"}
+                            </span>
+                            <span className="text-zinc-500">•</span>
+                            <span className="text-purple-400 font-bold">
+                              {res.passed ? Math.round(100 / results.length) : 0} Points
+                            </span>
+                          </div>
+                          {!res.passed && res.error && (
+                            <div className="mt-3 text-left bg-red-950/40 p-2 rounded border border-red-500/20 text-red-300">
+                              <span className="font-bold block mb-1">Error / Compiler Output:</span>
+                              <pre className="whitespace-pre-wrap">{res.error}</pre>
+                            </div>
+                          )}
                         </div>
+                      ) : (
+                        <>
+                          <div>Input: <span className="text-zinc-400">{res.input}</span></div>
+                          <div>Expected: <span className="text-zinc-400">{res.expectedOutput}</span></div>
+                          <div className="col-span-1 sm:col-span-2">
+                            Output: <span className={res.passed ? "text-emerald-400 font-bold" : "text-red-400 font-bold"}>{res.actualOutput || "(empty)"}</span>
+                          </div>
+                          <div className="col-span-1 sm:col-span-2 mt-1">
+                            Points: <span className="text-purple-400 font-bold">{res.passed ? Math.round(100 / results.length) : 0} / {Math.round(100 / results.length)}</span>
+                          </div>
+                          {res.error && (
+                            <div className="col-span-1 sm:col-span-2 mt-2 bg-red-950/40 p-2 rounded border border-red-500/20 text-red-300">
+                              <span className="font-bold block mb-1">Error / Compiler Output:</span>
+                              <pre className="whitespace-pre-wrap">{res.error}</pre>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
