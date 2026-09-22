@@ -38,7 +38,7 @@ const DEFAULT_STARTER_CODE: Record<string, string> = {
 export default function ContestArenaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: contestId } = use(params)
   const router = useRouter()
-  const { user, authFetch } = useAuth()
+  const { user, authFetch, isLoading: isAuthLoading } = useAuth()
 
   const [contest, setContest] = useState<Contest | null>(null)
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0)
@@ -70,8 +70,9 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
   const [mobileTab, setMobileTab] = useState<"problem" | "code" | "output">("problem")
 
   useEffect(() => {
+    if (isAuthLoading) return;
     fetchContestDetails()
-  }, [contestId])
+  }, [contestId, isAuthLoading])
 
   const fetchContestDetails = async () => {
     setIsLoading(true)
@@ -278,7 +279,7 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
     setTimeout(() => setCopiedIndex(null), 2000)
   }
 
-  if (isLoading) {
+  if (isLoading || isAuthLoading) {
     return (
       <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
         <Spinner className="w-8 h-8 text-emerald-500" />
