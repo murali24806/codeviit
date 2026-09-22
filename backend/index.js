@@ -200,6 +200,7 @@ app.post('/api/execute', verifyToken, async (req, res) => {
         const compileOutput = submitRes.data.compile_output?.trim() || submitRes.data.message || ''
         const errorOutput = submitRes.data.stderr?.trim() || compileOutput
         const isHidden = testCase.isHidden === true
+        const passed = output === expected
         const pts = testCase.points !== undefined ? Number(testCase.points) : Math.round(100 / testCases.length)
         
         return {
