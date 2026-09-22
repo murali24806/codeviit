@@ -38,8 +38,10 @@ export default function AdminPage() {
   const [submissions, setSubmissions] = useState<ContestSubmission[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // Submissions search filter & Modal
+  // Submissions search & filters & Modal
   const [searchQuery, setSearchQuery] = useState("")
+  const [filterBranch, setFilterBranch] = useState("all")
+  const [filterContest, setFilterContest] = useState("all")
   const [selectedSubmission, setSelectedSubmission] = useState<ContestSubmission | null>(null)
 
   // Create Contest Form State
@@ -266,12 +268,23 @@ export default function AdminPage() {
 
   const filteredSubmissionsRaw = submissions.filter((s) => {
     const query = searchQuery.toLowerCase()
-    return (
+    const matchesSearch = (
       s.userName?.toLowerCase().includes(query) ||
       s.registrationNumber?.toLowerCase().includes(query) ||
       s.contestTitle?.toLowerCase().includes(query) ||
       s.questionTitle?.toLowerCase().includes(query)
     )
+
+    const matchesContest = filterContest === "all" || s.contestId === filterContest
+
+    let matchesBranch = true
+    if (filterBranch !== "all") {
+      const u = usersList.find(user => user.id === s.userId || user.email === s.email)
+      const uBranch = (u as any)?.branch || "Unknown"
+      matchesBranch = uBranch === filterBranch
+    }
+
+    return matchesSearch && matchesContest && matchesBranch
   })
 
   const filteredSubmissions = Object.values(
@@ -803,24 +816,48 @@ export default function AdminPage() {
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h2 className="text-2xl font-bold">Contest Submissions & Code Monitoring</h2>
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                  <div className="relative flex-1 sm:w-64">
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
-                    <Input
-                      placeholder="Search student, reg no, contest..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9 bg-zinc-900/60 border-zinc-800 text-white"
-                    />
+                  <div className="flex items-center gap-3 w-full sm:w-auto flex-wrap">
+                    <div className="relative flex-1 min-w-[200px]">
+                      <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+                      <Input
+                        placeholder="Search student, reg no, contest..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9 bg-zinc-900/60 border-zinc-800 text-white"
+                      />
+                    </div>
+                    
+                    <select
+                      value={filterBranch}
+                      onChange={(e) => setFilterBranch(e.target.value)}
+                      className="bg-zinc-900/60 border border-zinc-800 text-white text-sm rounded-md px-3 py-2 outline-none focus:ring-1 focus:ring-purple-500"
+                    >
+                      <option value="all">All Branches</option>
+                      {Array.from(new Set(usersList.map((u: any) => u.branch).filter(Boolean))).map(branch => (
+                        <option key={branch} value={branch}>{branch}</option>
+                      ))}
+                      <option value="Unknown">Unknown Branch</option>
+                    </select>
+
+                    <select
+                      value={filterContest}
+                      onChange={(e) => setFilterContest(e.target.value)}
+                      className="bg-zinc-900/60 border border-zinc-800 text-white text-sm rounded-md px-3 py-2 outline-none focus:ring-1 focus:ring-purple-500 max-w-[200px] truncate"
+                    >
+                      <option value="all">All Contests</option>
+                      {contests.map(c => (
+                        <option key={c.id} value={c.id}>{c.title}</option>
+                      ))}
+                    </select>
+
+                    <Button
+                      onClick={() => handleExportSubmissionsCSV()}
+                      variant="outline"
+                      className="border-emerald-500/50 text-emerald-300 hover:bg-emerald-950/40 rounded-xl flex items-center gap-1.5 text-xs font-semibold shrink-0"
+                    >
+                      <Download className="w-4 h-4 text-emerald-400" /> Export CSV
+                    </Button>
                   </div>
-                  <Button
-                    onClick={() => handleExportSubmissionsCSV()}
-                    variant="outline"
-                    className="border-emerald-500/50 text-emerald-300 hover:bg-emerald-950/40 rounded-xl flex items-center gap-1.5 text-xs font-semibold shrink-0"
-                  >
-                    <Download className="w-4 h-4 text-emerald-400" /> Export CSV
-                  </Button>
-                </div>
               </div>
 
               {isLoading ? (
