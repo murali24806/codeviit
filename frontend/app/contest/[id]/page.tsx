@@ -205,9 +205,8 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
     setMobileTab("output")
 
     try {
-      const visibleTestCases = currentQuestion.testCases?.filter(tc => !tc.isHidden) || []
-      const testCasesToRun = visibleTestCases.length > 0
-        ? visibleTestCases
+      const testCasesToRun = currentQuestion.testCases && currentQuestion.testCases.length > 0
+        ? currentQuestion.testCases
         : [{ id: "sample", input: currentQuestion.sampleInput || "", expectedOutput: currentQuestion.sampleOutput || "" }]
 
       const res = await authFetch(`${BACKEND_URL}/api/execute`, {
@@ -224,11 +223,11 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
       if (!res.ok) throw new Error(data.error || "Execution failed")
 
       setResults(data.results || [])
-      const hiddenCount = currentQuestion.testCases?.filter(tc => tc.isHidden).length || 0
       
-      let outStr = `Execution Finished.\nPassed: ${data.summary?.passed}/${data.summary?.total} public test cases.`
+      const hiddenCount = testCasesToRun.filter(tc => tc.isHidden).length
+      let outStr = `Execution Finished.\nPassed: ${data.summary?.passed}/${data.summary?.total} test cases.`
       if (hiddenCount > 0) {
-        outStr += `\n(Note: ${hiddenCount} hidden test case${hiddenCount > 1 ? 's' : ''} will be evaluated when you click Submit)`
+        outStr += `\n(Evaluated against ${hiddenCount} hidden test cases securely)`
       }
       setConsoleOutput(outStr)
     } catch (err: any) {
