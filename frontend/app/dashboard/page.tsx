@@ -25,7 +25,7 @@ const BACKEND_URL = getBackendUrl()
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { user, isLoggedIn, logout } = useAuth()
+  const { user, isLoggedIn, logout, authFetch } = useAuth()
   const { problems, isLoading: problemsLoading, loadProblems } = useProblems()
 
   const [contests, setContests] = useState<Contest[]>([])
@@ -71,7 +71,7 @@ export default function DashboardPage() {
       if (user.id) params.append("userId", user.id)
       if (user.registrationNumber) params.append("registrationNumber", user.registrationNumber)
 
-      const res = await fetch(`${BACKEND_URL}/api/user/stats?${params.toString()}`)
+      const res = await authFetch(`${BACKEND_URL}/api/user/stats?${params.toString()}`)
       if (res.ok) {
         const data = await res.json()
         setUserStats({
@@ -89,7 +89,7 @@ export default function DashboardPage() {
 
   const fetchContests = async () => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/contests`)
+      const res = await authFetch(`${BACKEND_URL}/api/contests`)
       if (res.ok) {
         const data = await res.json()
         setContests(data.contests || [])
@@ -159,6 +159,11 @@ export default function DashboardPage() {
                   </Button>
                 </Link>
               )}
+              <Link href="/profile">
+                <Button variant="outline" className="border-blue-500/30 text-blue-300 hover:bg-blue-950/40 rounded-xl text-xs sm:text-sm px-3 sm:px-4">
+                  <UserIcon className="w-4 h-4 mr-1.5 text-blue-400" /> Profile
+                </Button>
+              </Link>
               <Button
                 onClick={() => {
                   logout()

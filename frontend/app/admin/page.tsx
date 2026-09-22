@@ -28,7 +28,7 @@ const BACKEND_URL = getBackendUrl()
 
 export default function AdminPage() {
   const router = useRouter()
-  const { user, isAdmin, logout } = useAuth()
+  const { user, isAdmin, logout, authFetch } = useAuth()
 
   const [activeTab, setActiveTab] = useState<"contests" | "create" | "users" | "submissions">("contests")
 
@@ -48,6 +48,7 @@ export default function AdminPage() {
   const [startTime, setStartTime] = useState("")
   const [endTime, setEndTime] = useState("")
   const [durationMinutes, setDurationMinutes] = useState(60)
+  const [editingContestId, setEditingContestId] = useState<string | null>(null)
 
   // Questions State
   const [questions, setQuestions] = useState<ContestQuestion[]>([
@@ -80,9 +81,9 @@ export default function AdminPage() {
     setIsLoading(true)
     try {
       const [contestsRes, usersRes, subsRes] = await Promise.all([
-        fetch(`${BACKEND_URL}/api/contests`),
-        fetch(`${BACKEND_URL}/api/admin/users`),
-        fetch(`${BACKEND_URL}/api/admin/submissions`)
+        authFetch(`${BACKEND_URL}/api/contests`),
+        authFetch(`${BACKEND_URL}/api/admin/users`),
+        authFetch(`${BACKEND_URL}/api/admin/submissions`)
       ])
 
       if (contestsRes.ok) {
@@ -152,7 +153,7 @@ export default function AdminPage() {
     setQuestions(updated)
   }
 
-  const updateTestCase = (qIndex: number, tcIndex: number, field: keyof TestCase, value: string) => {
+  const updateTestCase = (qIndex: number, tcIndex: number, field: keyof TestCase, value: any) => {
     const updated = [...questions]
     updated[qIndex].testCases[tcIndex] = {
       ...updated[qIndex].testCases[tcIndex],
@@ -177,10 +178,11 @@ export default function AdminPage() {
 
     setIsSaving(true)
     try {
-      const res = await fetch(`${BACKEND_URL}/api/contests`, {
+      const res = await authFetch(`${BACKEND_URL}/api/contests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          id: editingContestId || undefined,
           title: contestTitle,
           description: contestDescription,
           startTime: new Date(startTime).toISOString(),
@@ -193,9 +195,10 @@ export default function AdminPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to publish contest")
 
-      setBannerAlert({ type: "success", message: "Contest created and published successfully!" })
+      setBannerAlert({ type: "success", message: editingContestId ? "Contest updated successfully!" : "Contest created and published successfully!" })
       setContestTitle("")
       setContestDescription("")
+      setEditingContestId(null)
       fetchData()
       setActiveTab("contests")
     } catch (err: any) {
@@ -205,13 +208,59 @@ export default function AdminPage() {
     }
   }
 
+  const handleEditContest = (contest: Contest) => {
+    setEditingContestId(contest.id)
+    setContestTitle(contest.title)
+    setContestDescription(contest.description || "")
+    if (contest.startTime) {
+      const d = new Date(contest.startTime)
+      d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+      setStartTime(d.toISOString().slice(0, 16))
+    }
+    if (contest.endTime) {
+      const d = new Date(contest.endTime)
+      d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+      setEndTime(d.toISOString().slice(0, 16))
+    }
+    setDurationMinutes(contest.durationMinutes || 120)
+    setQuestions(contest.questions || [])
+    setActiveTab("create")
+  }
+
   const handleDeleteContest = async (id: string) => {
     if (!confirm("Are you sure you want to delete this contest?")) return
     try {
-      await fetch(`${BACKEND_URL}/api/contests/${id}`, { method: "DELETE" })
+      await authFetch(`${BACKEND_URL}/api/contests/${id}`, { method: "DELETE" })
       fetchData()
     } catch (err) {
       console.error("Error deleting contest:", err)
+    }
+  }
+
+  const handleTogglePublish = async (id: string, currentlyPublished: boolean) => {
+    try {
+      const res = await authFetch(`${BACKEND_URL}/api/contests/${id}/publish`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ published: !currentlyPublished })
+      })
+      if (res.ok) {
+        setContests(prev => prev.map(c => c.id === id ? { ...c, resultsPublished: !currentlyPublished } : c))
+      } else {
+        alert("Failed to update contest status.")
+      }
+    } catch (err) {
+      console.error("Error toggling publish status:", err)
+    }
+  }
+
+  const handleDeleteUser = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this user? This action cannot be undone.")) return
+    try {
+      await authFetch(`${BACKEND_URL}/api/admin/users/${id}`, { method: "DELETE" })
+      fetchData()
+    } catch (err) {
+      console.error("Error deleting user:", err)
     }
   }
 
@@ -395,6 +444,13 @@ export default function AdminPage() {
             >
               <Users className="w-4 h-4" /> Student Registrations ({usersList.length})
             </button>
+
+            <Link
+              href="/admin/exercises"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10"
+            >
+              <Sparkles className="w-4 h-4" /> Manage Practice Exercises
+            </Link>
           </div>
 
           {/* TAB 1: CONTESTS LIST */}
@@ -455,6 +511,23 @@ export default function AdminPage() {
                           <Layers className="w-3.5 h-3.5 text-indigo-400" /> {c.questions?.length || 0} Questions
                         </span>
                         <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePublish(c.id, !!c.resultsPublished)}
+                            className={`flex items-center gap-1 font-medium hover:underline ${c.resultsPublished ? 'text-amber-400' : 'text-blue-400'}`}
+                            title={c.resultsPublished ? "Unpublish Results" : "Verify & Publish Results"}
+                          >
+                            {c.resultsPublished ? <XCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                            {c.resultsPublished ? "Unpublish" : "Publish"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleEditContest(c)}
+                            className="text-orange-400 hover:underline flex items-center gap-1 font-medium"
+                            title="Edit this contest"
+                          >
+                            <Code className="w-3.5 h-3.5" /> Edit
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleExportSubmissionsCSV(c.id)}
@@ -646,23 +719,37 @@ export default function AdminPage() {
                       <div className="space-y-3">
                         {q.testCases.map((tc, tcIdx) => (
                           <div key={tc.id} className="grid grid-cols-1 sm:grid-cols-12 gap-2 bg-black/40 p-3 rounded-xl border border-white/5 items-center">
-                            <div className="sm:col-span-5">
-                              <Input
+                            <div className="sm:col-span-4">
+                              <Textarea
                                 placeholder="Input (stdin)"
                                 value={tc.input}
+                                rows={2}
                                 onChange={(e) => updateTestCase(qIdx, tcIdx, "input", e.target.value)}
-                                className="bg-zinc-900 border-zinc-800 text-xs text-white"
+                                className="bg-zinc-900 border-zinc-800 text-xs text-white resize-y"
                               />
                             </div>
-                            <div className="sm:col-span-5">
-                              <Input
+                            <div className="sm:col-span-4">
+                              <Textarea
                                 placeholder="Expected Output (stdout)"
                                 value={tc.expectedOutput}
+                                rows={2}
                                 onChange={(e) => updateTestCase(qIdx, tcIdx, "expectedOutput", e.target.value)}
-                                className="bg-zinc-900 border-zinc-800 text-xs text-white"
+                                className="bg-zinc-900 border-zinc-800 text-xs text-white resize-y"
                               />
                             </div>
-                            <div className="sm:col-span-2 flex justify-end">
+                            <div className="sm:col-span-3 flex items-center gap-2 pl-2">
+                              <input
+                                type="checkbox"
+                                id={`hidden-${q.id}-${tc.id}`}
+                                checked={!!tc.isHidden}
+                                onChange={(e) => updateTestCase(qIdx, tcIdx, "isHidden", e.target.checked)}
+                                className="w-3.5 h-3.5 rounded border-zinc-700 bg-zinc-900 text-purple-600 focus:ring-purple-600/50"
+                              />
+                              <label htmlFor={`hidden-${q.id}-${tc.id}`} className="text-xs text-zinc-400 cursor-pointer">
+                                Hidden Case
+                              </label>
+                            </div>
+                            <div className="sm:col-span-1 flex justify-end">
                               {q.testCases.length > 1 && (
                                 <button
                                   type="button"
@@ -686,7 +773,7 @@ export default function AdminPage() {
                 disabled={isSaving}
                 className="w-full bg-purple-600 hover:bg-purple-500 text-white font-medium py-3 rounded-xl shadow-lg shadow-purple-600/20 text-base"
               >
-                {isSaving ? <Spinner className="w-5 h-5" /> : "Publish Contest to Dashboard"}
+                {isSaving ? <Spinner className="w-5 h-5" /> : (editingContestId ? "Update Contest" : "Publish Contest to Dashboard")}
               </Button>
             </form>
           )}
@@ -811,6 +898,7 @@ export default function AdminPage() {
                         <th className="px-6 py-4">Submissions</th>
                         <th className="px-6 py-4">Role</th>
                         <th className="px-6 py-4">Joined Date</th>
+                        <th className="px-6 py-4 text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
@@ -839,6 +927,17 @@ export default function AdminPage() {
                           </td>
                           <td className="px-6 py-4 text-xs text-zinc-400">
                             {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "Recent"}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            {u.role !== "admin" && (
+                              <button
+                                onClick={() => handleDeleteUser(u.id)}
+                                className="p-1.5 text-red-400 hover:bg-red-950/40 rounded-lg transition-colors"
+                                title="Delete User"
+                              >
+                                <Trash2 className="w-4 h-4 inline-block" />
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}

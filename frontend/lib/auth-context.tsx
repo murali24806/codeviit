@@ -2,16 +2,19 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import type { User } from "@/lib/types"
+import { auth as firebaseAuth } from "@/lib/firebase"
+import { signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth"
 
 interface AuthContextType {
   user: User | null
+  token: string | null
   isLoggedIn: boolean
   isAdmin: boolean
   isLoading: boolean
-  sendOtp: (name: string, registrationNumber: string, email: string) => Promise<{ success: boolean; message?: string; devMode?: boolean; error?: string }>
-  verifyOtp: (name: string, registrationNumber: string, email: string, code: string) => Promise<{ success: boolean; error?: string }>
+  googleSignIn: () => Promise<{ success: boolean; user?: User; error?: string }>
   adminLogin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
+  authFetch: (url: string, options?: RequestInit) => Promise<Response>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -25,19 +28,19 @@ const getBackendUrl = () => {
   }
   return 'http://localhost:5000'
 }
-const BACKEND_URL = getBackendUrl()
+export const BACKEND_URL = getBackendUrl()
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Check saved session in localStorage
     try {
-      const stored = localStorage.getItem("runit_user_session")
-      if (stored) {
-        setUser(JSON.parse(stored))
-      }
+      const storedUser = localStorage.getItem("runit_user_session")
+      const storedToken = localStorage.getItem("runit_token")
+      if (storedUser) setUser(JSON.parse(storedUser))
+      if (storedToken) setToken(storedToken)
     } catch (e) {
       console.error("Error reading stored auth session:", e)
     } finally {
@@ -45,48 +48,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const saveUserSession = (userData: User) => {
+  const saveUserSession = (userData: User, userToken: string) => {
     setUser(userData)
+    setToken(userToken)
     try {
       localStorage.setItem("runit_user_session", JSON.stringify(userData))
+      localStorage.setItem("runit_token", userToken)
     } catch (e) {
       console.error("Error storing auth session:", e)
     }
   }
 
-  const sendOtp = async (name: string, registrationNumber: string, email: string) => {
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/auth/send-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, registrationNumber, email }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        return { success: false, error: data.error || "Failed to send OTP" }
-      }
-      return { success: true, message: data.message, devMode: data.devMode }
-    } catch (err: any) {
-      return { success: false, error: err.message || "Network error sending OTP" }
+  const authFetch = async (url: string, options: RequestInit = {}) => {
+    let currentToken = token
+    
+    // Auto-refresh Firebase token if student
+    if (user && user.role !== 'admin' && firebaseAuth.currentUser) {
+       currentToken = await firebaseAuth.currentUser.getIdToken()
+       setToken(currentToken)
+       localStorage.setItem("runit_token", currentToken)
     }
+
+    const headers = new Headers(options.headers || {})
+    if (currentToken) {
+      headers.set('Authorization', `Bearer ${currentToken}`)
+    }
+    
+    return fetch(url, { ...options, headers })
   }
 
-  const verifyOtp = async (name: string, registrationNumber: string, email: string, code: string) => {
+  const googleSignIn = async () => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/auth/verify-otp`, {
+      const provider = new GoogleAuthProvider()
+      const result = await signInWithPopup(firebaseAuth, provider)
+      const idToken = await result.user.getIdToken()
+      
+      const res = await fetch(`${BACKEND_URL}/api/auth/google-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, registrationNumber, email, code }),
+        body: JSON.stringify({ token: idToken, name: result.user.displayName }),
       })
       const data = await res.json()
       if (!res.ok) {
-        return { success: false, error: data.error || "Verification failed" }
+        return { success: false, error: data.error || "Login failed" }
       }
 
-      saveUserSession(data.user)
-      return { success: true }
+      saveUserSession(data.user, idToken)
+      return { success: true, user: data.user }
     } catch (err: any) {
-      return { success: false, error: err.message || "Network error verifying OTP" }
+      return { success: false, error: err.message || "Network error logging in" }
     }
   }
 
@@ -102,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: data.error || "Admin authentication failed" }
       }
 
-      saveUserSession(data.user)
+      saveUserSession(data.user, data.token)
       return { success: true }
     } catch (err: any) {
       return { success: false, error: err.message || "Network error logging in as admin" }
@@ -111,8 +121,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     setUser(null)
+    setToken(null)
+    try {
+      await signOut(firebaseAuth)
+    } catch(e) {}
     try {
       localStorage.removeItem("runit_user_session")
+      localStorage.removeItem("runit_token")
     } catch (e) {}
   }
 
@@ -120,13 +135,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
+        token,
         isLoggedIn: !!user,
         isAdmin: user?.role === "admin",
         isLoading,
-        sendOtp,
-        verifyOtp,
+        googleSignIn,
         adminLogin,
         logout,
+        authFetch
       }}
     >
       {children}

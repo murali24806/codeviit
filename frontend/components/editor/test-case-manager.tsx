@@ -1,6 +1,6 @@
 "use client"
 
-import { Plus, X } from "lucide-react"
+import { Plus, X, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import type { TestCase } from "@/lib/types"
@@ -16,6 +16,7 @@ export function TestCaseManager({ testCases, onUpdate }: TestCaseManagerProps) {
       id: "tc_" + Math.random().toString(36).substr(2, 9),
       input: "",
       expectedOutput: "",
+      isHidden: false,
     }
     onUpdate([...testCases, newTestCase])
   }
@@ -26,7 +27,7 @@ export function TestCaseManager({ testCases, onUpdate }: TestCaseManagerProps) {
     }
   }
 
-  const updateTestCase = (id: string, field: "input" | "expectedOutput", value: string) => {
+  const updateTestCase = (id: string, field: "input" | "expectedOutput" | "isHidden", value: string | boolean) => {
     onUpdate(
       testCases.map((tc) =>
         tc.id === id ? { ...tc, [field]: value } : tc
@@ -49,14 +50,27 @@ export function TestCaseManager({ testCases, onUpdate }: TestCaseManagerProps) {
               <span className="text-sm font-medium text-white">
                 Test Case {index + 1}
               </span>
-              {testCases.length > 1 && (
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => removeTestCase(testCase.id)}
-                  className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-300 transition-all"
+                  onClick={() => updateTestCase(testCase.id, "isHidden", !testCase.isHidden)}
+                  className={`p-1.5 rounded-md transition-all ${
+                    testCase.isHidden 
+                      ? "text-blue-400 bg-blue-400/10 hover:bg-blue-400/20" 
+                      : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+                  }`}
+                  title={testCase.isHidden ? "Hidden from students" : "Visible to students"}
                 >
-                  <X className="w-4 h-4" />
+                  {testCase.isHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
-              )}
+                {testCases.length > 1 && (
+                  <button
+                    onClick={() => removeTestCase(testCase.id)}
+                    className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-300 transition-all"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
             <div className="flex flex-col gap-3">
               <div>

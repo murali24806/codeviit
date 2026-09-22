@@ -8,23 +8,16 @@ import { Input } from "@/components/ui/input"
 import { PageTransition } from "@/components/page-transition"
 import { useAuth } from "@/lib/auth-context"
 import { Spinner } from "@/components/ui/spinner"
-import { ShieldCheck, Mail, User as UserIcon, Hash, Lock, KeyRound, ArrowRight, RefreshCw } from "lucide-react"
+import { ShieldCheck, Mail, Lock, ArrowRight } from "lucide-react"
 
 type AuthRole = "student" | "admin"
 
 export default function AuthPage() {
   const router = useRouter()
-  const { sendOtp, verifyOtp, adminLogin, isLoggedIn, isAdmin, isLoading: authLoading } = useAuth()
+  const { googleSignIn, adminLogin, isLoggedIn, isAdmin, user, isLoading: authLoading } = useAuth()
 
   const [role, setRole] = useState<AuthRole>("student")
-  const [step, setStep] = useState<"details" | "otp">("details")
   
-  // Student form state
-  const [name, setName] = useState("")
-  const [registrationNumber, setRegistrationNumber] = useState("")
-  const [email, setEmail] = useState("")
-  const [otpCode, setOtpCode] = useState("")
-
   // Admin form state
   const [adminEmail, setAdminEmail] = useState("")
   const [adminPassword, setAdminPassword] = useState("")
@@ -34,66 +27,29 @@ export default function AuthPage() {
   const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null)
 
   useEffect(() => {
-    if (isLoggedIn && !authLoading) {
+    if (isLoggedIn && !authLoading && user) {
       if (isAdmin) {
         router.push("/admin")
       } else {
-        router.push("/dashboard")
+        if (user.isFirstTimeLogin) {
+          router.push("/onboarding")
+        } else {
+          router.push("/dashboard")
+        }
       }
     }
-  }, [isLoggedIn, isAdmin, authLoading, router])
+  }, [isLoggedIn, isAdmin, user, authLoading, router])
 
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleGoogleSignIn = async () => {
     setMessage(null)
-
-    if (!name.trim()) {
-      setMessage({ type: "error", text: "Please enter your full name." })
-      return
-    }
-    if (!registrationNumber.trim()) {
-      setMessage({ type: "error", text: "Please enter your registration number." })
-      return
-    }
-    const cleanEmail = email.trim().toLowerCase()
-    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-      setMessage({ type: "error", text: "Please enter a valid email address." })
-      return
-    }
-
     setIsSubmitting(true)
-    const result = await sendOtp(name, registrationNumber, email)
+    const result = await googleSignIn()
     setIsSubmitting(false)
 
-    if (result.success) {
-      setStep("otp")
-      setMessage({
-        type: "success",
-        text: result.message || `Verification code sent to ${email}`
-      })
-    } else {
-      setMessage({ type: "error", text: result.error || "Failed to send OTP code." })
+    if (!result.success) {
+      setMessage({ type: "error", text: result.error || "Failed to sign in with Google." })
     }
-  }
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setMessage(null)
-
-    if (!otpCode.trim() || otpCode.length < 6) {
-      setMessage({ type: "error", text: "Please enter the 6-digit OTP sent to your email." })
-      return
-    }
-
-    setIsSubmitting(true)
-    const result = await verifyOtp(name, registrationNumber, email, otpCode)
-    setIsSubmitting(false)
-
-    if (result.success) {
-      router.push("/dashboard")
-    } else {
-      setMessage({ type: "error", text: result.error || "Invalid verification code." })
-    }
+    // Success redirect handled by useEffect
   }
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
@@ -133,7 +89,7 @@ export default function AuthPage() {
               CodeViit Platform
             </h1>
             <p className="text-sm text-zinc-400 mt-1">
-              {role === "student" ? "Student Email & OTP Verification" : "Administrator Portal"}
+              {role === "student" ? "Student Access Portal" : "Administrator Portal"}
             </p>
           </div>
 
@@ -143,7 +99,6 @@ export default function AuthPage() {
               type="button"
               onClick={() => {
                 setRole("student")
-                setStep("details")
                 setMessage(null)
               }}
               className={`py-2 text-sm font-medium rounded-lg transition-all ${
@@ -187,127 +142,42 @@ export default function AuthPage() {
 
           {/* STUDENT FLOW */}
           {role === "student" && (
-            <>
-              {step === "details" ? (
-                <form onSubmit={handleSendOtp} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                      Full Name
-                    </label>
-                    <div className="relative">
-                      <UserIcon className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
-                      <Input
-                        type="text"
-                        placeholder="John Doe"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="pl-9 bg-zinc-900/60 border-zinc-800 focus:border-blue-500 text-white placeholder:text-zinc-500"
+            <div className="space-y-4 pt-4">
+               <div className="text-center text-sm text-zinc-400 mb-6">
+                 Sign in securely with your Google account to access the arena.
+               </div>
+               <Button
+                onClick={handleGoogleSignIn}
+                disabled={isSubmitting}
+                className="w-full bg-white hover:bg-zinc-200 text-black font-semibold py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-3"
+              >
+                {isSubmitting ? (
+                  <Spinner className="w-5 h-5 text-black" />
+                ) : (
+                  <>
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+                      <path
+                        d="M12.0003 4.75C13.7703 4.75 15.3553 5.36 16.6053 6.54998L20.0303 3.125C17.9502 1.19 15.2353 0 12.0003 0C7.31028 0 3.25527 2.69 1.28027 6.60998L5.27028 9.70498C6.21525 6.81498 8.87028 4.75 12.0003 4.75Z"
+                        fill="#EA4335"
                       />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                      Registration Number
-                    </label>
-                    <div className="relative">
-                      <Hash className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
-                      <Input
-                        type="text"
-                        placeholder="2024CS101"
-                        value={registrationNumber}
-                        onChange={(e) => setRegistrationNumber(e.target.value)}
-                        className="pl-9 bg-zinc-900/60 border-zinc-800 focus:border-blue-500 text-white placeholder:text-zinc-500"
+                      <path
+                        d="M23.49 12.275C23.49 11.49 23.415 10.73 23.3 10H12V14.51H18.47C18.18 15.99 17.34 17.25 16.08 18.1L19.945 21.1C22.2 19.01 23.49 15.92 23.49 12.275Z"
+                        fill="#4285F4"
                       />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                      Email Address (OTP Verification)
-                    </label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
-                      <Input
-                        type="email"
-                        placeholder="student@university.edu"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="pl-9 bg-zinc-900/60 border-zinc-800 focus:border-blue-500 text-white placeholder:text-zinc-500"
+                      <path
+                        d="M5.26498 14.2949C5.02498 13.5699 4.88501 12.7999 4.88501 11.9999C4.88501 11.1999 5.01998 10.4299 5.26498 9.7049L1.275 6.60986C0.46 8.22986 0 10.0599 0 11.9999C0 13.9399 0.46 15.7699 1.28 17.3899L5.26498 14.2949Z"
+                        fill="#FBBC05"
                       />
-                    </div>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-xl transition-all duration-200 shadow-lg shadow-blue-600/20"
-                  >
-                    {isSubmitting ? (
-                      <Spinner className="w-5 h-5" />
-                    ) : (
-                      <span className="flex items-center justify-center gap-2">
-                        Send OTP via Email <ArrowRight className="w-4 h-4" />
-                      </span>
-                    )}
-                  </Button>
-                </form>
-              ) : (
-                <form onSubmit={handleVerifyOtp} className="space-y-4">
-                  <div className="text-center text-xs text-zinc-400 mb-2">
-                    Enter the 6-digit OTP code sent to <span className="text-blue-400 font-semibold">{email}</span>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                      Enter Verification Code
-                    </label>
-                    <div className="relative">
-                      <KeyRound className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
-                      <Input
-                        type="text"
-                        maxLength={6}
-                        placeholder="123456"
-                        value={otpCode}
-                        onChange={(e) => setOtpCode(e.target.value)}
-                        className="pl-9 bg-zinc-900/60 border-zinc-800 focus:border-blue-500 text-white text-center tracking-[0.4em] font-mono text-lg placeholder:tracking-normal placeholder:text-zinc-500"
+                      <path
+                        d="M12.0004 24.0001C15.2404 24.0001 17.9654 22.935 19.9454 21.095L16.0804 18.095C15.0054 18.82 13.6204 19.245 12.0004 19.245C8.8704 19.245 6.21537 17.185 5.26537 14.295L1.27539 17.385C3.25539 21.31 7.3104 24.0001 12.0004 24.0001Z"
+                        fill="#34A853"
                       />
-                    </div>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-xl transition-all duration-200 shadow-lg shadow-emerald-600/20"
-                  >
-                    {isSubmitting ? (
-                      <Spinner className="w-5 h-5" />
-                    ) : (
-                      <span className="flex items-center justify-center gap-2">
-                        <ShieldCheck className="w-4 h-4" /> Verify & Access Platform
-                      </span>
-                    )}
-                  </Button>
-
-                  <div className="flex items-center justify-between text-xs text-zinc-400 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setStep("details")}
-                      className="hover:text-white transition-colors"
-                    >
-                      ← Edit Student Info
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSendOtp}
-                      className="flex items-center gap-1 text-blue-400 hover:underline"
-                    >
-                      <RefreshCw className="w-3 h-3" /> Resend OTP
-                    </button>
-                  </div>
-                </form>
-              )}
-            </>
+                    </svg>
+                    Continue with Google
+                  </>
+                )}
+              </Button>
+            </div>
           )}
 
           {/* ADMIN FLOW */}

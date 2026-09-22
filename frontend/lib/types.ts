@@ -15,6 +15,7 @@ export interface TestCase {
   input: string
   expectedOutput: string
   description?: string
+  isHidden?: boolean
 }
 
 export interface TestResult {
@@ -59,6 +60,21 @@ export interface Contest {
   endTime: string
   durationMinutes: number
   questions: ContestQuestion[]
+  resultsPublished?: boolean
+  createdAt?: string
+}
+
+export interface Exercise {
+  id: string
+  title: string
+  description: string
+  difficulty: 'Easy' | 'Medium' | 'Hard'
+  tags: string[]
+  inputFormat?: string
+  outputFormat?: string
+  constraints?: string
+  starterCode?: Record<string, string>
+  testCases: TestCase[]
   createdAt?: string
 }
 

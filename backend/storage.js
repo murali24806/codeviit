@@ -1,5 +1,3 @@
-const fs = require('fs')
-const path = require('path')
 const mongoose = require('mongoose')
 require('dotenv').config()
 
@@ -8,17 +6,14 @@ const userSchema = new mongoose.Schema({
   id: { type: String, required: true },
   name: { type: String, required: true },
   registrationNumber: { type: String },
+  branch: { type: String },
+  section: { type: String },
+  collegeName: { type: String },
+  profilePhotoUrl: { type: String },
+  isFirstTimeLogin: { type: Boolean, default: true },
   email: { type: String, required: true },
   role: { type: String, default: 'student' },
   createdAt: { type: String, default: () => new Date().toISOString() }
-})
-
-const otpSchema = new mongoose.Schema({
-  email: { type: String, required: true },
-  name: { type: String },
-  registrationNumber: { type: String },
-  code: { type: String, required: true },
-  expiresAt: { type: Number, required: true }
 })
 
 const contestSchema = new mongoose.Schema({
@@ -29,6 +24,21 @@ const contestSchema = new mongoose.Schema({
   endTime: { type: String, required: true },
   durationMinutes: { type: Number, default: 60 },
   questions: { type: Array, default: [] },
+  resultsPublished: { type: Boolean, default: false },
+  createdAt: { type: String, default: () => new Date().toISOString() }
+})
+
+const exerciseSchema = new mongoose.Schema({
+  id: { type: String, required: true },
+  title: { type: String, required: true },
+  description: { type: String },
+  difficulty: { type: String, default: 'Easy' },
+  tags: { type: Array, default: [] },
+  inputFormat: { type: String },
+  outputFormat: { type: String },
+  constraints: { type: String },
+  starterCode: { type: Object, default: {} },
+  testCases: { type: Array, default: [] },
   createdAt: { type: String, default: () => new Date().toISOString() }
 })
 
@@ -53,15 +63,17 @@ const submissionSchema = new mongoose.Schema({
 })
 
 const UserModel = mongoose.models.User || mongoose.model('User', userSchema)
-const OtpModel = mongoose.models.Otp || mongoose.model('Otp', otpSchema)
 const ContestModel = mongoose.models.Contest || mongoose.model('Contest', contestSchema)
+const ExerciseModel = mongoose.models.Exercise || mongoose.model('Exercise', exerciseSchema)
 const SubmissionModel = mongoose.models.Submission || mongoose.model('Submission', submissionSchema)
 
 let mongoPromise = null
 
 async function ensureMongoConnected() {
   const mongoUri = process.env.MONGODB_URI
-  if (!mongoUri) return false
+  if (!mongoUri) {
+    throw new Error('MONGODB_URI is required for production safety.')
+  }
 
   if (mongoose.connection.readyState === 1) {
     return true
@@ -78,7 +90,7 @@ async function ensureMongoConnected() {
       .catch((err) => {
         console.error('❌ MongoDB Connection Error:', err.message)
         mongoPromise = null
-        return false
+        throw err
       })
   }
 
@@ -87,90 +99,7 @@ async function ensureMongoConnected() {
     return mongoose.connection.readyState === 1
   } catch (err) {
     mongoPromise = null
-    return false
-  }
-}
-
-// ---------------- LOCAL JSON FALLBACK SETUP ----------------
-const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || (process.env.NODE_ENV === 'production' && !fs.existsSync(path.join(__dirname, 'data')))
-const DATA_DIR = isServerless ? path.join('/tmp', 'data') : path.join(__dirname, 'data')
-const DB_FILE = path.join(DATA_DIR, 'db.json')
-
-let defaultData = {
-  users: [
-    {
-      id: 'admin_1',
-      name: 'System Admin',
-      registrationNumber: 'ADMIN001',
-      email: 'admin@codeviit.edu.in',
-      role: 'admin',
-      createdAt: new Date().toISOString()
-    }
-  ],
-  otps: [],
-  contests: [],
-  submissions: []
-}
-
-try {
-  const seedPath = path.join(__dirname, 'data', 'db.json')
-  if (fs.existsSync(seedPath)) {
-    const rawSeed = fs.readFileSync(seedPath, 'utf8')
-    defaultData = JSON.parse(rawSeed)
-  }
-} catch (e) {
-  // Ignore seed load errors
-}
-
-let inMemoryData = JSON.parse(JSON.stringify(defaultData))
-
-function ensureDbExists() {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true })
-    }
-    if (!fs.existsSync(DB_FILE)) {
-      fs.writeFileSync(DB_FILE, JSON.stringify(inMemoryData, null, 2))
-    }
-  } catch (e) {
-    // Ignore read-only filesystem errors
-  }
-}
-
-function readDb() {
-  ensureDbExists()
-  try {
-    if (fs.existsSync(DB_FILE)) {
-      const raw = fs.readFileSync(DB_FILE, 'utf8')
-      const parsed = JSON.parse(raw)
-      if (!parsed.contests) {
-        parsed.contests = defaultData.contests || []
-      }
-      if (!parsed.submissions) {
-        parsed.submissions = defaultData.submissions || []
-      }
-      if (!parsed.users) {
-        parsed.users = defaultData.users || []
-      }
-      if (!parsed.otps) {
-        parsed.otps = []
-      }
-      inMemoryData = parsed
-      return parsed
-    }
-  } catch (err) {
-    // Ignore read-only errors
-  }
-  return inMemoryData
-}
-
-function writeDb(data) {
-  inMemoryData = data
-  try {
-    ensureDbExists()
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2))
-  } catch (e) {
-    // Ignore read-only errors
+    throw err
   }
 }
 
@@ -178,225 +107,210 @@ function writeDb(data) {
 module.exports = {
   // Users
   getUsers: async () => {
-    if (await ensureMongoConnected()) {
-      return await UserModel.find({}).lean()
-    }
-    const db = readDb()
-    return db.users || []
+    await ensureMongoConnected()
+    return await UserModel.find({}).lean()
   },
 
   findUserByEmail: async (email) => {
     if (!email) return null
+    await ensureMongoConnected()
     const clean = email.trim().toLowerCase()
-    if (await ensureMongoConnected()) {
-      return await UserModel.findOne({ email: new RegExp(`^${clean}$`, 'i') }).lean()
-    }
-    const db = readDb()
-    return (db.users || []).find(u => u.email && u.email.toLowerCase() === clean)
+    return await UserModel.findOne({ email: new RegExp(`^${clean}$`, 'i') }).lean()
   },
 
   saveUser: async (user) => {
+    await ensureMongoConnected()
     const cleanEmail = user.email ? user.email.trim().toLowerCase() : ''
     const userToSave = {
       ...user,
       email: cleanEmail
     }
 
-    if (await ensureMongoConnected()) {
-      const emailRegex = new RegExp(`^${cleanEmail}$`, 'i')
-      let existing = await UserModel.findOne({ $or: [{ id: user.id }, { email: emailRegex }] })
-      if (existing) {
-        existing.name = userToSave.name || existing.name
-        existing.registrationNumber = userToSave.registrationNumber || existing.registrationNumber
-        existing.email = cleanEmail || existing.email
-        existing.role = userToSave.role || existing.role || 'student'
-        await existing.save()
-        return existing.toObject()
-      } else {
-        const created = await UserModel.create(userToSave)
-        return created.toObject()
-      }
-    }
-    const db = readDb()
-    if (!db.users) db.users = []
-    const existingIdx = db.users.findIndex(u =>
-      (u.id && u.id === user.id) ||
-      (u.email && cleanEmail && u.email.toLowerCase() === cleanEmail)
-    )
-    if (existingIdx >= 0) {
-      db.users[existingIdx] = { ...db.users[existingIdx], ...userToSave }
+    const emailRegex = new RegExp(`^${cleanEmail}$`, 'i')
+    let existing = await UserModel.findOne({ $or: [{ id: user.id }, { email: emailRegex }] })
+    if (existing) {
+      existing.name = userToSave.name || existing.name
+      existing.registrationNumber = userToSave.registrationNumber || existing.registrationNumber
+      existing.branch = userToSave.branch || existing.branch
+      existing.section = userToSave.section || existing.section
+      existing.collegeName = userToSave.collegeName || existing.collegeName
+      existing.profilePhotoUrl = userToSave.profilePhotoUrl || existing.profilePhotoUrl
+      if (userToSave.isFirstTimeLogin !== undefined) existing.isFirstTimeLogin = userToSave.isFirstTimeLogin
+      existing.email = cleanEmail || existing.email
+      existing.role = userToSave.role || existing.role || 'student'
+      await existing.save()
+      return existing.toObject()
     } else {
-      db.users.push(userToSave)
+      const created = await UserModel.create(userToSave)
+      return created.toObject()
     }
-    writeDb(db)
-    return userToSave
   },
 
-  // OTPs
-  saveOtp: async (otpData) => {
-    const cleanEmail = otpData.email ? otpData.email.trim().toLowerCase() : ''
-    const dataToSave = { ...otpData, email: cleanEmail }
-    if (await ensureMongoConnected()) {
-      await OtpModel.deleteMany({ email: new RegExp(`^${cleanEmail}$`, 'i') })
-      await OtpModel.create(dataToSave)
-      return
+  deleteUser: async (id) => {
+    await ensureMongoConnected()
+    const query = { $or: [{ id: id }] }
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      query.$or.push({ _id: id })
     }
-    const db = readDb()
-    db.otps = (db.otps || []).filter(o => o.email.toLowerCase() !== cleanEmail)
-    db.otps.push(dataToSave)
-    writeDb(db)
-  },
-
-  verifyOtp: async (email, code) => {
-    const cleanEmail = email ? email.trim().toLowerCase() : ''
-    const cleanCode = code ? code.trim() : ''
-    if (await ensureMongoConnected()) {
-      const record = await OtpModel.findOne({ email: new RegExp(`^${cleanEmail}$`, 'i') }).lean()
-      if (!record) return { valid: false, message: 'OTP not found or expired. Please request a new OTP.' }
-      
-      if (Date.now() > record.expiresAt) {
-        await OtpModel.deleteOne({ email: new RegExp(`^${cleanEmail}$`, 'i') })
-        return { valid: false, message: 'OTP has expired. Please request a new OTP.' }
-      }
-
-      if (record.code !== cleanCode) {
-        return { valid: false, message: 'Invalid OTP code. Please check and try again.' }
-      }
-
-      await OtpModel.deleteOne({ email: new RegExp(`^${cleanEmail}$`, 'i') })
-      return { valid: true, otpRecord: record }
-    }
-
-    const db = readDb()
-    const record = (db.otps || []).find(o => o.email && o.email.toLowerCase() === cleanEmail)
-    if (!record) return { valid: false, message: 'OTP not found or expired. Please request a new OTP.' }
-    
-    if (Date.now() > record.expiresAt) {
-      db.otps = db.otps.filter(o => o.email.toLowerCase() !== cleanEmail)
-      writeDb(db)
-      return { valid: false, message: 'OTP has expired. Please request a new OTP.' }
-    }
-
-    if (record.code !== cleanCode) {
-      return { valid: false, message: 'Invalid OTP code. Please check and try again.' }
-    }
-
-    db.otps = db.otps.filter(o => o.email.toLowerCase() !== cleanEmail)
-    writeDb(db)
-    return { valid: true, otpRecord: record }
+    await UserModel.deleteMany(query)
   },
 
   // Contests
   getContests: async () => {
-    if (await ensureMongoConnected()) {
-      return await ContestModel.find({}).sort({ createdAt: -1 }).lean()
-    }
-    const db = readDb()
-    return db.contests || []
+    await ensureMongoConnected()
+    return await ContestModel.find({}).sort({ createdAt: -1 }).lean()
   },
 
   getContestById: async (id) => {
-    if (await ensureMongoConnected()) {
-      const query = { $or: [{ id: id }] }
-      if (mongoose.Types.ObjectId.isValid(id)) {
-        query.$or.push({ _id: id })
-      }
-      return await ContestModel.findOne(query).lean()
+    await ensureMongoConnected()
+    const query = { $or: [{ id: id }] }
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      query.$or.push({ _id: id })
     }
-    const db = readDb()
-    return (db.contests || []).find(c => c.id === id)
+    return await ContestModel.findOne(query).lean()
   },
 
   saveContest: async (contest) => {
-    if (await ensureMongoConnected()) {
-      return await ContestModel.findOneAndUpdate(
-        { id: contest.id },
-        contest,
-        { upsert: true, new: true }
-      ).lean()
-    }
-    const db = readDb()
-    if (!db.contests) db.contests = []
-    const idx = db.contests.findIndex(c => c.id === contest.id)
-    if (idx >= 0) {
-      db.contests[idx] = contest
-    } else {
-      db.contests.unshift(contest)
-    }
-    writeDb(db)
-    return contest
+    await ensureMongoConnected()
+    return await ContestModel.findOneAndUpdate(
+      { id: contest.id },
+      contest,
+      { upsert: true, new: true }
+    ).lean()
   },
 
   deleteContest: async (id) => {
-    if (await ensureMongoConnected()) {
-      const query = { $or: [{ id: id }] }
-      if (mongoose.Types.ObjectId.isValid(id)) {
-        query.$or.push({ _id: id })
-      }
-      await ContestModel.deleteMany(query)
-      return
+    await ensureMongoConnected()
+    const query = { $or: [{ id: id }] }
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      query.$or.push({ _id: id })
     }
-    const db = readDb()
-    db.contests = (db.contests || []).filter(c => c.id !== id)
-    writeDb(db)
+    await ContestModel.deleteMany(query)
+  },
+
+  setContestPublished: async (id, published) => {
+    await ensureMongoConnected()
+    const query = { $or: [{ id: id }] }
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      query.$or.push({ _id: id })
+    }
+    return await ContestModel.findOneAndUpdate(
+      query,
+      { $set: { resultsPublished: published } },
+      { new: true }
+    ).lean()
+  },
+
+  getContestLeaderboard: async (contestId) => {
+    await ensureMongoConnected()
+    const submissions = await SubmissionModel.find({ contestId }).lean()
+    
+    // Aggregate max score per question per user
+    const userScores = {} // { userId: { totalScore: 0, userName: '', lastSubmit: '', questions: { qId: maxScore } } }
+    
+    submissions.forEach(sub => {
+      if (!userScores[sub.userId]) {
+        userScores[sub.userId] = {
+          userId: sub.userId,
+          userName: sub.userName || 'Student',
+          registrationNumber: sub.registrationNumber || 'N/A',
+          totalScore: 0,
+          questions: {},
+          lastSubmitTime: new Date(sub.submittedAt).getTime()
+        }
+      }
+      
+      const userRec = userScores[sub.userId]
+      const currentQScore = userRec.questions[sub.questionId] || 0
+      
+      if (sub.score > currentQScore) {
+        userRec.questions[sub.questionId] = sub.score
+        // Update last submit time to this better submission
+        userRec.lastSubmitTime = new Date(sub.submittedAt).getTime()
+      } else if (sub.score === currentQScore && new Date(sub.submittedAt).getTime() < userRec.lastSubmitTime) {
+        // If tied on max score, take the earlier one
+        userRec.lastSubmitTime = new Date(sub.submittedAt).getTime()
+      }
+    })
+    
+    const leaderboard = Object.values(userScores).map(userRec => {
+      const total = Object.values(userRec.questions).reduce((a, b) => a + b, 0)
+      return {
+        ...userRec,
+        totalScore: total
+      }
+    })
+    
+    // Sort by totalScore DESC, then by lastSubmitTime ASC
+    leaderboard.sort((a, b) => {
+      if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore
+      return a.lastSubmitTime - b.lastSubmitTime
+    })
+    
+    // Add rank
+    leaderboard.forEach((entry, idx) => {
+      entry.rank = idx + 1
+    })
+    
+    return leaderboard
+  },
+
+  // Exercises
+  getExercises: async () => {
+    await ensureMongoConnected()
+    return await ExerciseModel.find({}).sort({ createdAt: -1 }).lean()
+  },
+
+  getExerciseById: async (id) => {
+    await ensureMongoConnected()
+    const query = { $or: [{ id: id }] }
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      query.$or.push({ _id: id })
+    }
+    return await ExerciseModel.findOne(query).lean()
+  },
+
+  saveExercise: async (exercise) => {
+    await ensureMongoConnected()
+    return await ExerciseModel.findOneAndUpdate(
+      { id: exercise.id },
+      exercise,
+      { upsert: true, new: true }
+    ).lean()
+  },
+
+  deleteExercise: async (id) => {
+    await ensureMongoConnected()
+    const query = { $or: [{ id: id }] }
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      query.$or.push({ _id: id })
+    }
+    await ExerciseModel.deleteMany(query)
   },
 
   // Submissions
   getSubmissions: async () => {
-    if (await ensureMongoConnected()) {
-      return await SubmissionModel.find({}).sort({ submittedAt: -1 }).lean()
-    }
-    const db = readDb()
-    return db.submissions || []
+    await ensureMongoConnected()
+    return await SubmissionModel.find({}).sort({ submittedAt: -1 }).lean()
   },
 
   getUserSubmissions: async (identifiers) => {
+    await ensureMongoConnected()
     const list = Array.isArray(identifiers) ? identifiers.filter(Boolean) : [identifiers].filter(Boolean)
     if (list.length === 0) return []
 
-    if (await ensureMongoConnected()) {
-      const orConditions = list.flatMap(id => [
-        { userId: id },
-        { email: new RegExp(`^${id}$`, 'i') },
-        { registrationNumber: new RegExp(`^${id}$`, 'i') }
-      ])
-      return await SubmissionModel.find({ $or: orConditions }).sort({ submittedAt: -1 }).lean()
-    }
-
-    const db = readDb()
-    const lowerList = list.map(l => l.toString().toLowerCase())
-
-    const matchedUsers = (db.users || []).filter(u =>
-      (u.id && lowerList.includes(u.id.toLowerCase())) ||
-      (u.email && lowerList.includes(u.email.toLowerCase())) ||
-      (u.registrationNumber && lowerList.includes(u.registrationNumber.toLowerCase()))
-    )
-
-    const fullMatchSet = new Set([
-      ...lowerList,
-      ...matchedUsers.map(u => u.id?.toLowerCase()).filter(Boolean),
-      ...matchedUsers.map(u => u.email?.toLowerCase()).filter(Boolean),
-      ...matchedUsers.map(u => u.registrationNumber?.toLowerCase()).filter(Boolean)
+    const orConditions = list.flatMap(id => [
+      { userId: id },
+      { email: new RegExp(`^${id}$`, 'i') },
+      { registrationNumber: new RegExp(`^${id}$`, 'i') }
     ])
-
-    return (db.submissions || []).filter(s =>
-      (s.userId && fullMatchSet.has(s.userId.toLowerCase())) ||
-      (s.email && fullMatchSet.has(s.email.toLowerCase())) ||
-      (s.registrationNumber && fullMatchSet.has(s.registrationNumber.toLowerCase()))
-    )
+    return await SubmissionModel.find({ $or: orConditions }).sort({ submittedAt: -1 }).lean()
   },
 
   getUsersWithStats: async () => {
-    let users = []
-    let submissions = []
-    if (await ensureMongoConnected()) {
-      users = await UserModel.find({}).lean()
-      submissions = await SubmissionModel.find({}).lean()
-    } else {
-      const db = readDb()
-      users = db.users || []
-      submissions = db.submissions || []
-    }
+    await ensureMongoConnected()
+    const users = await UserModel.find({}).lean()
+    const submissions = await SubmissionModel.find({}).lean()
 
     return users.map(user => {
       const userMatchSet = new Set([
@@ -434,13 +348,7 @@ module.exports = {
   },
 
   saveSubmission: async (submission) => {
-    if (await ensureMongoConnected()) {
-      return await SubmissionModel.create(submission)
-    }
-    const db = readDb()
-    if (!db.submissions) db.submissions = []
-    db.submissions.unshift(submission)
-    writeDb(db)
-    return submission
+    await ensureMongoConnected()
+    return await SubmissionModel.create(submission)
   }
 }

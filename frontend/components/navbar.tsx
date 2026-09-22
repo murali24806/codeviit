@@ -13,7 +13,7 @@ import {
 import { useAuth } from "@/lib/auth-context"
 
 export function Navbar() {
-  const { user, logout } = useAuth()
+  const { user, isAdmin, logout } = useAuth()
   const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
@@ -31,44 +31,54 @@ export function Navbar() {
     : "U"
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-[#1a1a1a] border-b border-[#3e3e42]">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-[50px]">
 
-          {/* Logo → goes to hero page */}
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="w-7 h-7 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center">
-              <Terminal className="w-3.5 h-3.5 text-white" />
+          {/* Logo & Main Nav */}
+          <div className="flex items-center gap-8">
+            <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <Terminal className="w-4 h-4 text-orange-500" />
+              <span className="text-lg font-semibold text-white tracking-tight">CodeViit</span>
+            </Link>
+
+            <div className="hidden md:flex items-center gap-1 text-sm font-medium">
+              <Link href="/exercises" className="px-3 py-1.5 text-zinc-400 hover:text-white hover:bg-[#282828] rounded transition-colors">
+                Problems
+              </Link>
+              <Link href="/dashboard" className="px-3 py-1.5 text-zinc-400 hover:text-white hover:bg-[#282828] rounded transition-colors">
+                Dashboard
+              </Link>
+              {isAdmin && (
+                <Link href="/admin" className="px-3 py-1.5 text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 rounded transition-colors">
+                  Admin Panel
+                </Link>
+              )}
             </div>
-            <span className="text-lg font-bold text-white tracking-tight">CodeViit</span>
-          </Link>
+          </div>
 
-          {/* Desktop Navigation */}
+          {/* Right Navigation */}
           <div className="hidden md:flex items-center gap-4">
-            <Button
-              onClick={handleNewProblem}
-              className="rounded-full bg-blue-500/80 hover:bg-blue-500 text-white px-4 py-2 text-sm font-medium transition-all duration-300 hover:scale-105 active:scale-95"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              New Problem
-            </Button>
+            <button className="text-zinc-400 hover:text-white px-2 py-1.5 text-xs font-semibold rounded bg-[#282828] border border-[#3e3e42]">
+              Premium
+            </button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="w-9 h-9 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white text-sm font-medium hover:bg-white/20 transition-colors">
+                <button className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-500 to-emerald-500 flex items-center justify-center text-white text-xs font-bold ring-2 ring-[#1a1a1a] hover:opacity-90 transition-opacity">
                   {initials}
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="bg-black/90 backdrop-blur-md border-white/10 text-white"
+                className="bg-[#282828] border-[#3e3e42] text-white"
               >
                 <DropdownMenuItem
                   onClick={handleLogout}
                   className="cursor-pointer hover:bg-white/10 focus:bg-white/10 text-white"
                 >
                   <LogOut className="w-4 h-4 mr-2" />
-                  Logout
+                  Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -85,23 +95,39 @@ export function Navbar() {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-white/10">
-            <div className="flex flex-col gap-3">
-              <Button
-                onClick={() => { handleNewProblem(); setMobileMenuOpen(false) }}
-                className="rounded-full bg-blue-500/80 hover:bg-blue-500 text-white w-full"
+          <div className="md:hidden py-4 border-t border-[#3e3e42] bg-[#1a1a1a]">
+            <div className="flex flex-col gap-2 px-2">
+              <Link 
+                href="/exercises" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-zinc-400 hover:text-white px-3 py-2 text-sm font-medium rounded hover:bg-[#282828]"
               >
-                <Plus className="w-4 h-4 mr-2" />
-                New Problem
-              </Button>
-              <Button
+                Problems
+              </Link>
+              <Link 
+                href="/dashboard" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-zinc-400 hover:text-white px-3 py-2 text-sm font-medium rounded hover:bg-[#282828]"
+              >
+                Dashboard
+              </Link>
+              {isAdmin && (
+                <Link 
+                  href="/admin" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-orange-400 hover:text-orange-300 px-3 py-2 text-sm font-medium rounded hover:bg-orange-500/10"
+                >
+                  Admin Panel
+                </Link>
+              )}
+              <div className="h-px bg-[#3e3e42] my-2" />
+              <button
                 onClick={handleLogout}
-                variant="ghost"
-                className="text-white/70 hover:text-white hover:bg-white/10 w-full justify-start"
+                className="text-zinc-400 hover:text-white px-3 py-2 text-sm font-medium rounded hover:bg-[#282828] text-left flex items-center"
               >
                 <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
+                Sign Out
+              </button>
             </div>
           </div>
         )}

@@ -20,6 +20,7 @@ import { CodeEditor } from "@/components/editor/code-editor"
 import { TestCaseManager } from "@/components/editor/test-case-manager"
 import { AIAssistant } from "@/components/editor/ai-assistant"
 import { useProblems } from "@/lib/problems-context"
+import { useAuth } from "@/lib/auth-context"
 import { LANGUAGES, type TestCase, type TestResult, type Language } from "@/lib/types"
 
 const getBackendUrl = () => {
@@ -37,6 +38,7 @@ export default function EditorWithIdPage() {
   const params = useParams()
   const router = useRouter()
   const { currentProblem, loadProblem, updateProblem, saveStatus, isLoading } = useProblems()
+  const { authFetch } = useAuth()
 
   // LOCAL STATE for instant UI updates
   const [localTitle, setLocalTitle] = useState("")
@@ -120,7 +122,7 @@ export default function EditorWithIdPage() {
     setIsConsoleExpanded(true)
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/execute`, {
+      const response = await authFetch(`${BACKEND_URL}/api/execute`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -374,6 +376,12 @@ export default function EditorWithIdPage() {
                                 <div className="col-span-1 sm:col-span-2">
                                   Output: <span className={res.passed ? "text-emerald-400 font-bold" : "text-red-400 font-bold"}>{res.actualOutput || "(empty)"}</span>
                                 </div>
+                                {res.error && (
+                                  <div className="col-span-1 sm:col-span-2 mt-2 bg-red-950/40 p-2 rounded border border-red-500/20 text-red-300">
+                                    <span className="font-bold block mb-1">Error / Compiler Output:</span>
+                                    <pre className="whitespace-pre-wrap">{res.error}</pre>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           ))}
