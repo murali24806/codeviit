@@ -143,7 +143,6 @@ export default function ProfilePage() {
           <Button
             onClick={() => {
               logout()
-              router.push("/auth")
             }}
             variant="outline"
             size="sm"

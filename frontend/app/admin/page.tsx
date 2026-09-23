@@ -418,7 +418,6 @@ export default function AdminPage() {
             <Button
               onClick={() => {
                 logout()
-                router.push("/auth")
               }}
               variant="outline"
               size="sm"

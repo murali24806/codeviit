@@ -19,7 +19,6 @@ export function Navbar() {
 
   const handleLogout = () => {
     logout()
-    router.push("/")
   }
 
   const handleNewProblem = () => {

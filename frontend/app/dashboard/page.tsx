@@ -175,7 +175,6 @@ export default function DashboardPage() {
               <Button
                 onClick={() => {
                   logout()
-                  router.push("/auth")
                 }}
                 variant="outline"
                 className="border-white/10 text-zinc-300 hover:text-white hover:bg-white/10 rounded-xl text-xs sm:text-sm px-3 sm:px-4"
