@@ -12,7 +12,7 @@ import { useAuth, BACKEND_URL } from "@/lib/auth-context"
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { user, isLoggedIn, isLoading, authFetch, logout } = useAuth()
+  const { user, isLoggedIn, isLoading, authFetch, logout, updateUser } = useAuth()
 
   const [name, setName] = useState("")
   const [registrationNumber, setRegistrationNumber] = useState("")
@@ -124,12 +124,8 @@ export default function ProfilePage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to update profile")
       
-      const stored = localStorage.getItem("runit_user_session")
-      if (stored) {
-        const u = JSON.parse(stored)
-        const updated = { ...u, name, registrationNumber, branch, section, collegeName, profilePhotoUrl }
-        localStorage.setItem("runit_user_session", JSON.stringify(updated))
-      }
+      // Update global context state so dashboard sees the new data immediately
+      updateUser({ name, registrationNumber, branch, section, collegeName, profilePhotoUrl })
       
       if (isOnboarding) {
         router.push("/dashboard")

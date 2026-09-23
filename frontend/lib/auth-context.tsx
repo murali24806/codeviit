@@ -14,6 +14,7 @@ interface AuthContextType {
   adminLogin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
   authFetch: (url: string, options?: RequestInit) => Promise<Response>
+  updateUser: (updates: Partial<User>) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -172,6 +173,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch(e) {}
   }
 
+  const updateUser = (updates: Partial<User>) => {
+    if (user) {
+      const updatedUser = { ...user, ...updates } as User
+      setUser(updatedUser)
+      try {
+        localStorage.setItem("runit_user_session", JSON.stringify(updatedUser))
+      } catch (e) {}
+    }
+  }
+
   const currentUser = user || (clerkSignedIn && clerkUser ? { 
     id: clerkUser.id, 
     name: clerkUser.fullName || clerkUser.firstName || 'Student', 
@@ -190,7 +201,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         googleSignIn,
         adminLogin,
         logout,
-        authFetch
+        authFetch,
+        updateUser
       }}
     >
       {children}
