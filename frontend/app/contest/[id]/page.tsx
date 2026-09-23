@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { 
   ArrowLeft, Play, Send, Clock, CheckCircle2, XCircle, 
-  RotateCcw, ChevronUp, ChevronDown, Copy, Check, Terminal, FileText, Layers, Trophy 
+  RotateCcw, ChevronUp, ChevronDown, Copy, Check, Terminal, FileText, Layers, Trophy, AlertTriangle 
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
@@ -14,7 +14,7 @@ import { PageTransition } from "@/components/page-transition"
 import { CodeEditor } from "@/components/editor/code-editor"
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable"
 import { useAuth } from "@/lib/auth-context"
-import { LANGUAGES, type Contest, type ContestQuestion, type TestResult, type Language } from "@/lib/types"
+import { LANGUAGES, type Contest, type ContestQuestion, type TestResult, type Language, type ContestSubmission } from "@/lib/types"
 
 const getBackendUrl = () => {
   if (process.env.NEXT_PUBLIC_API_URL) {
