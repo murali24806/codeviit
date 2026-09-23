@@ -12,6 +12,7 @@ interface CodeEditorProps {
 export function CodeEditor({ value, onChange, language }: CodeEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const lineNumbersRef = useRef<HTMLDivElement>(null)
+  const highlightRef = useRef<HTMLDivElement>(null)
   const [lineCount, setLineCount] = useState(1)
   const [highlighted, setHighlighted] = useState("")
   const [fontSize, setFontSize] = useState(16) // Default larger 16px font size
@@ -23,8 +24,10 @@ export function CodeEditor({ value, onChange, language }: CodeEditorProps) {
   }, [value, language])
 
   const handleScroll = () => {
-    if (textareaRef.current && lineNumbersRef.current) {
+    if (textareaRef.current && lineNumbersRef.current && highlightRef.current) {
       lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop
+      highlightRef.current.scrollTop = textareaRef.current.scrollTop
+      highlightRef.current.scrollLeft = textareaRef.current.scrollLeft
     }
   }
 
@@ -217,6 +220,7 @@ export function CodeEditor({ value, onChange, language }: CodeEditorProps) {
 
         {/* Syntax Highlighted Display */}
         <div
+          ref={highlightRef}
           className="absolute left-[56px] top-0 right-0 bottom-0 py-4 px-4 font-mono pointer-events-none overflow-hidden whitespace-pre"
           style={{
             color: "#d4d4d4",
