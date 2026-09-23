@@ -25,39 +25,16 @@ export function ActivityCalendar({ submissions }: ActivityCalendarProps) {
     return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`
   }
 
-  const { activityMap, totalUniqueCount } = useMemo(() => {
-    const map = new Map<string, Set<string>>()
-    const overallUniqueQuestions = new Set<string>()
-
+  const activityMap = useMemo(() => {
+    const map = new Map<string, number>()
     submissions.forEach(sub => {
       const dateVal = sub.submittedAt || sub.createdAt || new Date().toISOString()
       const date = new Date(dateVal)
       const dateString = toLocalDateString(date)
-      
-      if (!map.has(dateString)) {
-        map.set(dateString, new Set<string>())
-      }
-      
-      const qId = sub.questionId || sub.exerciseId || sub.id
-      if (qId) {
-        map.get(dateString)!.add(qId)
-        
-        // Only count towards total if within the last `days` days
-        const diffTime = Math.abs(today.getTime() - date.getTime())
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) 
-        if (diffDays <= days) {
-           overallUniqueQuestions.add(qId)
-        }
-      }
+      map.set(dateString, (map.get(dateString) || 0) + 1)
     })
-
-    const countMap = new Map<string, number>()
-    map.forEach((set, dateStr) => {
-      countMap.set(dateStr, set.size)
-    })
-
-    return { activityMap: countMap, totalUniqueCount: overallUniqueQuestions.size }
-  }, [submissions, days, today])
+    return map
+  }, [submissions])
 
   const weeks = useMemo(() => {
     const startDate = new Date(today)
@@ -134,7 +111,7 @@ export function ActivityCalendar({ submissions }: ActivityCalendarProps) {
       visible: true,
       x: rect.left - containerRect.left + (rect.width / 2),
       y: rect.top - containerRect.top - 8,
-      content: `${day.count} ${day.count === 1 ? 'question' : 'questions'} solved on ${formatDateLabel(day.date)}`
+      content: `${day.count} submissions on ${formatDateLabel(day.date)}`
     })
   }
 
@@ -149,7 +126,7 @@ export function ActivityCalendar({ submissions }: ActivityCalendarProps) {
           <Trophy className="w-4 h-4 text-emerald-400" /> Activity
         </h3>
         <div className="text-xs text-zinc-400">
-          <span className="font-bold text-white">{totalUniqueCount}</span> questions solved in the last {days} days
+          <span className="font-bold text-white">{submissions.length}</span> submissions in the last {days} days
         </div>
       </div>
       
