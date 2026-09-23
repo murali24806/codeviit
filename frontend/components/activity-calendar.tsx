@@ -26,14 +26,18 @@ export function ActivityCalendar({ submissions }: ActivityCalendarProps) {
   }
 
   const activityMap = useMemo(() => {
-    const map = new Map<string, number>()
+    const map = new Map<string, Set<string>>()
     submissions.forEach(sub => {
       const dateVal = sub.submittedAt || sub.createdAt || new Date().toISOString()
       const date = new Date(dateVal)
       const dateString = toLocalDateString(date)
-      map.set(dateString, (map.get(dateString) || 0) + 1)
+      if (!map.has(dateString)) map.set(dateString, new Set())
+      if (sub.questionId) map.get(dateString)!.add(sub.questionId)
     })
-    return map
+    
+    const countMap = new Map<string, number>()
+    map.forEach((set, date) => countMap.set(date, set.size))
+    return countMap
   }, [submissions])
 
   const weeks = useMemo(() => {
@@ -111,7 +115,7 @@ export function ActivityCalendar({ submissions }: ActivityCalendarProps) {
       visible: true,
       x: rect.left - containerRect.left + (rect.width / 2),
       y: rect.top - containerRect.top - 8,
-      content: `${day.count} submissions on ${formatDateLabel(day.date)}`
+      content: `${day.count} questions submitted on ${formatDateLabel(day.date)}`
     })
   }
 
@@ -126,7 +130,7 @@ export function ActivityCalendar({ submissions }: ActivityCalendarProps) {
           <Trophy className="w-4 h-4 text-emerald-400" /> Activity
         </h3>
         <div className="text-xs text-zinc-400">
-          <span className="font-bold text-white">{submissions.length}</span> submissions in the last {days} days
+          <span className="font-bold text-white">{Array.from(activityMap.values()).reduce((a, b) => a + b, 0)}</span> questions submitted in the last {days} days
         </div>
       </div>
       

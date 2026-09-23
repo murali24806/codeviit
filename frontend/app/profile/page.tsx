@@ -24,6 +24,17 @@ export default function ProfilePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [isOnboarding, setIsOnboarding] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("onboarding") === "true") {
+        setIsOnboarding(true)
+        setMessage({ type: "error", text: "Please complete your profile details to continue to the dashboard." })
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (!isLoading && !isLoggedIn) {
@@ -120,7 +131,11 @@ export default function ProfilePage() {
         localStorage.setItem("runit_user_session", JSON.stringify(updated))
       }
       
-      setMessage({ type: "success", text: "Profile updated successfully!" })
+      if (isOnboarding) {
+        router.push("/dashboard")
+      } else {
+        setMessage({ type: "success", text: "Profile updated successfully!" })
+      }
     } catch (err: any) {
       setMessage({ type: "error", text: err.message || "Failed to update profile." })
     } finally {
@@ -135,10 +150,12 @@ export default function ProfilePage() {
       <div className="min-h-screen bg-black text-white pb-12">
         <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 sm:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-             <Link href="/dashboard" className="text-zinc-400 hover:text-white transition-colors p-2" title="Back to Dashboard">
-               <ArrowLeft className="w-5 h-5" />
-             </Link>
-             <h1 className="text-lg font-bold">Profile Dashboard</h1>
+             {!isOnboarding && (
+               <Link href="/dashboard" className="text-zinc-400 hover:text-white transition-colors p-2" title="Back to Dashboard">
+                 <ArrowLeft className="w-5 h-5" />
+               </Link>
+             )}
+             <h1 className="text-lg font-bold">{isOnboarding ? "Welcome to CodeViit!" : "Profile Dashboard"}</h1>
           </div>
           <Button
             onClick={() => {

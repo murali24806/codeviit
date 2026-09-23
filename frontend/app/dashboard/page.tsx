@@ -55,6 +55,13 @@ export default function DashboardPage() {
       router.push("/auth")
       return
     }
+
+    if (user && user.role !== "admin") {
+      if (!user.registrationNumber || !user.branch || !user.collegeName) {
+        router.push("/profile?onboarding=true")
+        return
+      }
+    }
     loadProblems()
     fetchContests()
     if (user) {
