@@ -610,61 +610,49 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
             )}
 
             {results.length > 0 && (
-              <div className="space-y-2.5">
-                {results.map((res, idx) => (
-                  <div
-                    key={idx}
-                    className={`p-3 rounded-lg border ${
-                      res.passed
-                        ? "bg-emerald-950/30 border-emerald-500/30 text-emerald-300"
-                        : "bg-red-950/30 border-red-500/30 text-red-300"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-bold text-xs">Testcase {idx + 1}</span>
-                      <span className="font-bold text-[11px] uppercase">{res.passed ? "PASSED" : "FAILED"}</span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-zinc-300 mt-2 font-mono">
-                      {res.input === "Hidden Test Case" || res.isHidden ? (
-                        <div className="col-span-1 sm:col-span-2 text-center py-3 bg-black/20 rounded-lg border border-white/5">
-                          <span className="font-bold block text-xs mb-1">🔒 Hidden Test Case {idx + 1}</span>
-                          <div className="flex items-center justify-center gap-2">
-                            <span className={res.passed ? "text-emerald-400" : "text-red-400"}>
-                              {res.passed ? "Passed" : "Failed"}
-                            </span>
-                            <span className="text-zinc-500">•</span>
-                            <span className="text-purple-400 font-bold">
-                              {res.passed ? Math.round(100 / results.length) : 0} Points
-                            </span>
+              <div className="rounded-lg border border-[#3e3e42] overflow-hidden bg-[#282828] mt-2">
+                <table className="w-full text-sm text-left font-sans">
+                  <thead className="bg-[#2a2a2a] text-zinc-400 text-xs font-semibold border-b border-[#3e3e42]">
+                    <tr>
+                      <th className="px-4 py-3 text-center font-medium">Sub-Task</th>
+                      <th className="px-4 py-3 text-center font-medium">Task #</th>
+                      <th className="px-4 py-3 text-center font-medium">Result<br/><span className="text-[10px]">(time)</span></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-black/20">
+                    {results.map((res, idx) => (
+                      <tr 
+                        key={idx} 
+                        className={res.passed ? "bg-[#6b8e5c]/90 text-white" : "bg-red-900/80 text-white"}
+                      >
+                        <td className="px-4 py-2.5 text-center">1</td>
+                        <td className="px-4 py-2.5 text-center">{idx}</td>
+                        <td className="px-4 py-2.5 text-center">
+                          <div className="flex flex-col items-center">
+                            <span>{res.passed ? "Correct" : (res.error ? "Error" : "Wrong")}</span>
+                            <span className="text-[11px] opacity-80">(0.02)</span>
+                            {!res.passed && res.error && (
+                              <div className="text-[10px] mt-1.5 bg-black/30 p-2 rounded max-w-xs overflow-auto text-left w-full font-mono">
+                                {res.error}
+                              </div>
+                            )}
                           </div>
-                          {!res.passed && res.error && (
-                            <div className="mt-3 text-left bg-red-950/40 p-2 rounded border border-red-500/20 text-red-300">
-                              <span className="font-bold block mb-1">Error / Compiler Output:</span>
-                              <pre className="whitespace-pre-wrap">{res.error}</pre>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <>
-                          <div>Input: <span className="text-zinc-400">{res.input}</span></div>
-                          <div>Expected: <span className="text-zinc-400">{res.expectedOutput}</span></div>
-                          <div className="col-span-1 sm:col-span-2">
-                            Output: <span className={res.passed ? "text-emerald-400 font-bold" : "text-red-400 font-bold"}>{res.actualOutput || "(empty)"}</span>
-                          </div>
-                          <div className="col-span-1 sm:col-span-2 mt-1">
-                            Points: <span className="text-purple-400 font-bold">{res.passed ? Math.round(100 / results.length) : 0} / {Math.round(100 / results.length)}</span>
-                          </div>
-                          {res.error && (
-                            <div className="col-span-1 sm:col-span-2 mt-2 bg-red-950/40 p-2 rounded border border-red-500/20 text-red-300">
-                              <span className="font-bold block mb-1">Error / Compiler Output:</span>
-                              <pre className="whitespace-pre-wrap">{res.error}</pre>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  {submissionFeedback && (
+                    <tfoot className="text-sm">
+                      <tr className="bg-[#e0e0e0] text-black font-bold">
+                        <td colSpan={2} className="px-4 py-3">Subtask Score: {submissionFeedback.score}%</td>
+                        <td className="px-4 py-3 text-right">Result - {submissionFeedback.status === "Accepted" ? "Correct" : submissionFeedback.status}</td>
+                      </tr>
+                      <tr className="bg-[#282828] text-zinc-300 font-bold border-t border-[#3e3e42]">
+                        <td colSpan={3} className="px-4 py-3 text-right">Total Score = {submissionFeedback.score}%</td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
               </div>
             )}
           </div>
