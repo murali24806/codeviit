@@ -31,6 +31,12 @@ export function CodeEditor({ value, onChange, language }: CodeEditorProps) {
     }
   }
 
+  // When highlighted text updates (on every keystroke), the browser resets the div's scrollTop to 0.
+  // We must instantly restore it to match the textarea.
+  useEffect(() => {
+    handleScroll()
+  }, [highlighted])
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const target = e.target as HTMLTextAreaElement
     const start = target.selectionStart
