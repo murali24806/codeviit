@@ -73,8 +73,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Effect to sync Clerk user with our backend
   useEffect(() => {
+    let isMounted = true;
     const syncClerkUser = async () => {
-      if (clerkLoaded && clerkSignedIn && clerkUser) {
+      if (!clerkLoaded) return; // Wait until clerk is completely loaded
+
+      if (clerkSignedIn && clerkUser) {
         // Only sync if we don't have an app user session, or if it's missing
         const storedUser = localStorage.getItem("runit_user_session")
         if (!storedUser) {
@@ -87,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 body: JSON.stringify({ token: currentToken, name: clerkUser.fullName || clerkUser.firstName }),
               })
               const data = await res.json()
-              if (res.ok && data.user) {
+              if (res.ok && data.user && isMounted) {
                 saveUserSession(data.user, currentToken)
               }
             }
@@ -96,11 +99,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       }
-      if (clerkLoaded && user?.role !== 'admin') {
-         setIsLoading(false)
+      
+      // Once Clerk is loaded and any necessary syncing is done, we are no longer loading
+      if (isMounted) {
+        setIsLoading(false)
       }
     }
     syncClerkUser()
+    return () => { isMounted = false; }
   }, [clerkLoaded, clerkSignedIn, clerkUser, getToken])
 
   const authFetch = async (url: string, options: RequestInit = {}) => {
@@ -156,14 +162,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
     setToken(null)
     try {
-      if (clerkSignedIn) {
-        await clerkSignOut()
-      }
-    } catch(e) {}
-    try {
       localStorage.removeItem("runit_user_session")
       localStorage.removeItem("runit_token")
     } catch (e) {}
+    try {
+      if (clerkSignedIn) {
+        await clerkSignOut({ redirectUrl: "/" })
+      }
+    } catch(e) {}
   }
 
   return (
