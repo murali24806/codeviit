@@ -342,7 +342,7 @@ module.exports = {
         ...user,
         totalPoints,
         contestsAttempted: attemptedContests.size,
-        submissionsCount: userSubs.length
+        submissionsCount: new Set(userSubs.map(s => s.questionId).filter(Boolean)).size
       }
     })
   },

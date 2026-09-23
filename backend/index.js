@@ -495,7 +495,7 @@ app.get('/api/user/stats', verifyToken, async (req, res) => {
     contestsAttemptedCount: attemptedContests.size,
     attemptedContestIds: Array.from(attemptedContests),
     contestScores,
-    totalSubmissions: submissions.length,
+    totalSubmissions: new Set(submissions.map(s => s.questionId).filter(Boolean)).size,
     submissions
   })
 })
