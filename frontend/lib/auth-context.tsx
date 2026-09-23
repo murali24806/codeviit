@@ -172,14 +172,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch(e) {}
   }
 
+  const currentUser = user || (clerkSignedIn && clerkUser ? { 
+    id: clerkUser.id, 
+    name: clerkUser.fullName || clerkUser.firstName || 'Student', 
+    email: clerkUser.emailAddresses?.[0]?.emailAddress || '',
+    role: 'student' 
+  } : null)
+
   return (
     <AuthContext.Provider
       value={{
-        user,
+        user: currentUser as any,
         token,
-        isLoggedIn: !!user,
-        isAdmin: user?.role === "admin",
-        isLoading: isLoading || (user?.role !== 'admin' && !clerkLoaded),
+        isLoggedIn: !!currentUser,
+        isAdmin: currentUser?.role === "admin",
+        isLoading: isLoading || (currentUser?.role !== 'admin' && !clerkLoaded),
         googleSignIn,
         adminLogin,
         logout,
