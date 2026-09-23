@@ -234,6 +234,13 @@ export default function ModernLoginSignup() {
             <h1 style={{fontSize:"1.35rem",fontWeight:600,marginBottom:"0.25rem",letterSpacing:"-0.025em"}}>Sign in to CodeViit</h1>
             <p style={{fontSize:"0.85rem",color:"#888",marginBottom:"0.85rem",lineHeight:1.5}}>Sign in to your Account.</p>
 
+            <form onSubmit={e=>{e.preventDefault(); alert("Email login requires Clerk configuration for magic links/OTP.")}} style={{width:"100%",display:"flex",flexDirection:"column",gap:"0.65rem"}}>
+              <input style={input} type="email" placeholder="name@work-email.com" required/>
+              <button type="submit" style={{width:"100%",padding:"0.65rem",borderRadius:6,border:"none",background:"#ededed",color:"#000",fontWeight:500,fontSize:"0.875rem",cursor:"pointer"}}>Continue with Email</button>
+            </form>
+
+            <div style={{height:1,background:"#222",width:"100%",margin:"0.85rem 0"}}/>
+
             <button onClick={handleGoogleSignIn} style={socialBtn}>{GoogleIcon}Continue with Google</button>
             <button onClick={() => alert("GitHub sign in not configured yet.")} style={{...socialBtn,marginBottom:0}}>{GitHubIcon}Continue with GitHub</button>
 
@@ -248,6 +255,14 @@ export default function ModernLoginSignup() {
             {Logo}
             <h1 style={{fontSize:"1.35rem",fontWeight:600,marginBottom:"0.25rem",letterSpacing:"-0.025em"}}>Sign up for CodeViit</h1>
             <p style={{fontSize:"0.85rem",color:"#888",marginBottom:"0.85rem",lineHeight:1.5}}>Create a new account to get started.</p>
+
+            <form onSubmit={e=>{e.preventDefault(); alert("Email signup requires Clerk configuration for magic links/OTP.")}} style={{width:"100%",display:"flex",flexDirection:"column",gap:"0.65rem"}}>
+              <input style={input} type="text" placeholder="Full Name" required/>
+              <input style={input} type="email" placeholder="name@work-email.com" required/>
+              <button type="submit" style={{width:"100%",padding:"0.65rem",borderRadius:6,border:"none",background:"#ededed",color:"#000",fontWeight:500,fontSize:"0.875rem",cursor:"pointer"}}>Sign Up with Email</button>
+            </form>
+
+            <div style={{height:1,background:"#222",width:"100%",margin:"0.85rem 0"}}/>
 
             <button onClick={handleGoogleSignUp} style={socialBtn}>{GoogleIcon}Sign up with Google</button>
             <button onClick={() => alert("GitHub sign up not configured yet.")} style={{...socialBtn,marginBottom:0}}>{GitHubIcon}Sign up with GitHub</button>
