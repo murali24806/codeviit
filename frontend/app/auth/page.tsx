@@ -1,5 +1,5 @@
 import { RedirectToSignIn } from "@clerk/nextjs";
 
 export default function AuthPage() {
-  return <RedirectToSignIn />;
+  return <RedirectToSignIn fallbackRedirectUrl="/dashboard" signUpFallbackRedirectUrl="/dashboard" />;
 }
