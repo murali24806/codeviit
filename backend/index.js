@@ -3,26 +3,11 @@ const cors = require('cors')
 const axios = require('axios')
 require('dotenv').config()
 const storage = require('./storage')
-const { initializeApp, cert, getApps } = require('firebase-admin/app')
-const { getAuth } = require('firebase-admin/auth')
+const { verifyToken: clerkVerifyToken, createClerkClient } = require('@clerk/backend')
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 
-// Initialize Firebase Admin SDK
-// You must set FIREBASE_SERVICE_ACCOUNT in your .env as a base64 encoded JSON string
-// or directly pass credentials if you prefer.
-if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-  try {
-    const serviceAccount = JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, 'base64').toString('utf8'))
-    initializeApp({
-      credential: cert(serviceAccount)
-    })
-  } catch (err) {
-    console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT', err)
-  }
-} else {
-  console.warn('⚠️ FIREBASE_SERVICE_ACCOUNT not provided. Firebase Auth will fail.')
-}
+const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY })
 
 const app = express()
 
@@ -44,7 +29,7 @@ app.use((req, res, next) => {
   express.json()(req, res, next)
 })
 
-// Middleware to verify Auth Token (Firebase or Admin JWT)
+// Middleware to verify Auth Token (Clerk or Admin JWT)
 const verifyToken = async (req, res, next) => {
   const authHeader = req.headers.authorization
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -59,15 +44,26 @@ const verifyToken = async (req, res, next) => {
     req.user = decodedJwt
     return next()
   } catch (jwtErr) {
-    // Not a valid JWT, try Firebase
-    if (!getApps().length) {
-      return res.status(500).json({ error: 'Firebase Admin not initialized' })
-    }
+    // Not a valid JWT, try Clerk
     try {
-      const decodedFirebase = await getAuth().verifyIdToken(token)
-      req.user = { id: decodedFirebase.uid, email: decodedFirebase.email, role: 'student' }
+      const decodedClerk = await clerkVerifyToken(token, {
+        secretKey: process.env.CLERK_SECRET_KEY
+      })
+      
+      req.user = { id: decodedClerk.sub, role: 'student' }
+      
+      // Attempt to load email from our storage to populate req.user.email for existing endpoints
+      // We don't have a direct findUserById that uses string ID, but we can search users or rely on endpoints to fetch if needed.
+      // Actually we have email in google-login, but for verifyToken we just need basic info.
+      // Many endpoints need email. We can fetch the user from mongo:
+      const userList = await storage.getUsers()
+      const dbUser = userList.find(u => u.id === decodedClerk.sub)
+      if (dbUser) {
+         req.user.email = dbUser.email
+      }
+
       return next()
-    } catch (firebaseErr) {
+    } catch (clerkErr) {
       return res.status(401).json({ error: 'Unauthorized: Invalid token' })
     }
   }
@@ -98,18 +94,21 @@ app.post('/api/auth/google-login', async (req, res) => {
   const { token, name } = req.body
   if (!token) return res.status(400).json({ error: 'Token is required' })
   
-  if (!getApps().length) return res.status(500).json({ error: 'Firebase Admin not initialized' })
-  
   try {
-    const decodedToken = await getAuth().verifyIdToken(token)
-    const email = decodedToken.email.toLowerCase()
+    const decodedToken = await clerkVerifyToken(token, {
+        secretKey: process.env.CLERK_SECRET_KEY
+    })
+    
+    // Fetch user from clerk API to get email
+    const clerkUser = await clerkClient.users.getUser(decodedToken.sub)
+    const email = clerkUser.emailAddresses[0]?.emailAddress?.toLowerCase() || ''
     
     let user = await storage.findUserByEmail(email)
     if (!user) {
       // First time login
       user = await storage.saveUser({
-        id: decodedToken.uid,
-        name: name || decodedToken.name || email.split('@')[0],
+        id: decodedToken.sub,
+        name: name || clerkUser.firstName || email.split('@')[0],
         email: email,
         role: 'student',
         isFirstTimeLogin: true
@@ -118,7 +117,7 @@ app.post('/api/auth/google-login', async (req, res) => {
     
     res.json({ success: true, user })
   } catch (err) {
-    res.status(401).json({ error: 'Invalid Google Token', details: err.message })
+    res.status(401).json({ error: 'Invalid Token', details: err.message })
   }
 })
 

@@ -2,8 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import type { User } from "@/lib/types"
-import { auth as firebaseAuth } from "@/lib/firebase"
-import { signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth"
+import { useUser, useAuth as useClerkAuth, useClerk } from "@clerk/nextjs"
 
 interface AuthContextType {
   user: User | null
@@ -35,6 +34,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  const { user: clerkUser, isLoaded: clerkLoaded, isSignedIn: clerkSignedIn } = useUser()
+  const { getToken, signOut: clerkSignOut } = useClerkAuth()
+  const clerk = useClerk()
+
+  const saveUserSession = (userData: User, userToken: string) => {
+    setUser(userData)
+    setToken(userToken)
+    try {
+      localStorage.setItem("runit_user_session", JSON.stringify(userData))
+      localStorage.setItem("runit_token", userToken)
+    } catch (e) {
+      console.error("Error storing auth session:", e)
+    }
+  }
+
+  // Effect to load initial state from localStorage (especially for admin)
   useEffect(() => {
     let isAdmin = false
     try {
@@ -48,46 +63,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (storedToken) setToken(storedToken)
     } catch (e) {
       console.error("Error reading stored auth session:", e)
-    } 
+    }
 
     if (isAdmin) {
       setIsLoading(false)
       return
     }
-
-    const unsubscribe = firebaseAuth.onAuthStateChanged(async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          const idToken = await firebaseUser.getIdToken(true)
-          setToken(idToken)
-          localStorage.setItem("runit_token", idToken)
-        } catch (e) {}
-      }
-      setIsLoading(false)
-    })
-
-    return () => unsubscribe()
   }, [])
 
-  const saveUserSession = (userData: User, userToken: string) => {
-    setUser(userData)
-    setToken(userToken)
-    try {
-      localStorage.setItem("runit_user_session", JSON.stringify(userData))
-      localStorage.setItem("runit_token", userToken)
-    } catch (e) {
-      console.error("Error storing auth session:", e)
+  // Effect to sync Clerk user with our backend
+  useEffect(() => {
+    const syncClerkUser = async () => {
+      if (clerkLoaded && clerkSignedIn && clerkUser) {
+        // Only sync if we don't have an app user session, or if it's missing
+        const storedUser = localStorage.getItem("runit_user_session")
+        if (!storedUser) {
+          try {
+            const currentToken = await getToken()
+            if (currentToken) {
+              const res = await fetch(`${BACKEND_URL}/api/auth/google-login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ token: currentToken, name: clerkUser.fullName || clerkUser.firstName }),
+              })
+              const data = await res.json()
+              if (res.ok && data.user) {
+                saveUserSession(data.user, currentToken)
+              }
+            }
+          } catch (e) {
+            console.error("Failed to sync Clerk user with backend", e)
+          }
+        }
+      }
+      if (clerkLoaded && user?.role !== 'admin') {
+         setIsLoading(false)
+      }
     }
-  }
+    syncClerkUser()
+  }, [clerkLoaded, clerkSignedIn, clerkUser, getToken])
 
   const authFetch = async (url: string, options: RequestInit = {}) => {
     let currentToken = token
     
-    // Auto-refresh Firebase token if student
-    if (user && user.role !== 'admin' && firebaseAuth.currentUser) {
-       currentToken = await firebaseAuth.currentUser.getIdToken()
-       setToken(currentToken)
-       localStorage.setItem("runit_token", currentToken)
+    // Auto-refresh Clerk token if student
+    if (user && user.role !== 'admin' && clerkSignedIn) {
+       const clerkToken = await getToken()
+       if (clerkToken) {
+         currentToken = clerkToken
+         setToken(currentToken)
+         localStorage.setItem("runit_token", currentToken)
+       }
     }
 
     const headers = new Headers(options.headers || {})
@@ -100,22 +126,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const googleSignIn = async () => {
     try {
-      const provider = new GoogleAuthProvider()
-      const result = await signInWithPopup(firebaseAuth, provider)
-      const idToken = await result.user.getIdToken()
-      
-      const res = await fetch(`${BACKEND_URL}/api/auth/google-login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: idToken, name: result.user.displayName }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        return { success: false, error: data.error || "Login failed" }
-      }
-
-      saveUserSession(data.user, idToken)
-      return { success: true, user: data.user }
+      clerk.openSignIn()
+      return { success: false, error: "Please complete sign in using the popup." }
     } catch (err: any) {
       return { success: false, error: err.message || "Network error logging in" }
     }
@@ -144,7 +156,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
     setToken(null)
     try {
-      await signOut(firebaseAuth)
+      if (clerkSignedIn) {
+        await clerkSignOut()
+      }
     } catch(e) {}
     try {
       localStorage.removeItem("runit_user_session")
@@ -159,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token,
         isLoggedIn: !!user,
         isAdmin: user?.role === "admin",
-        isLoading,
+        isLoading: isLoading || (user?.role !== 'admin' && !clerkLoaded),
         googleSignIn,
         adminLogin,
         logout,
