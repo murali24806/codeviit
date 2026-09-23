@@ -161,7 +161,7 @@ export default function DashboardPage() {
 
             <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
               {user?.role === "admin" && (
-                <Link href="/admin">
+                <Link href="/admin-dashboard">
                   <Button variant="outline" className="border-purple-500/50 text-purple-300 hover:bg-purple-950/40 rounded-xl text-xs sm:text-sm px-3 sm:px-4">
                     <Trophy className="w-4 h-4 mr-1.5 text-purple-400" /> Admin Portal
                   </Button>
