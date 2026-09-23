@@ -27,7 +27,7 @@ const BACKEND_URL = getBackendUrl()
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { user, isLoggedIn, logout, authFetch } = useAuth()
+  const { user, isLoggedIn, isLoading: authLoading, logout, authFetch } = useAuth()
   const { problems, isLoading: problemsLoading, loadProblems } = useProblems()
 
   const [contests, setContests] = useState<Contest[]>([])
@@ -49,6 +49,8 @@ export default function DashboardPage() {
   })
 
   useEffect(() => {
+    if (authLoading) return
+
     if (!isLoggedIn) {
       router.push("/auth")
       return
@@ -65,7 +67,7 @@ export default function DashboardPage() {
     }
     window.addEventListener("focus", onFocus)
     return () => window.removeEventListener("focus", onFocus)
-  }, [isLoggedIn, user?.id, user?.email, router])
+  }, [isLoggedIn, authLoading, user?.id, user?.email, router])
 
   const fetchUserStats = async () => {
     try {

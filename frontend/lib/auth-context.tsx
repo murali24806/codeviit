@@ -36,16 +36,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    let isAdmin = false
     try {
       const storedUser = localStorage.getItem("runit_user_session")
       const storedToken = localStorage.getItem("runit_token")
-      if (storedUser) setUser(JSON.parse(storedUser))
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser)
+        setUser(parsed)
+        if (parsed.role === "admin") isAdmin = true
+      }
       if (storedToken) setToken(storedToken)
     } catch (e) {
       console.error("Error reading stored auth session:", e)
-    } finally {
+    } 
+
+    if (isAdmin) {
       setIsLoading(false)
+      return
     }
+
+    const unsubscribe = firebaseAuth.onAuthStateChanged(async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const idToken = await firebaseUser.getIdToken(true)
+          setToken(idToken)
+          localStorage.setItem("runit_token", idToken)
+        } catch (e) {}
+      }
+      setIsLoading(false)
+    })
+
+    return () => unsubscribe()
   }, [])
 
   const saveUserSession = (userData: User, userToken: string) => {
