@@ -1,5 +1,5 @@
-import ModernLoginSignup from "@/components/ui/modern-login-signup";
+import { RedirectToSignIn } from "@clerk/nextjs";
 
 export default function AuthPage() {
-  return <ModernLoginSignup />;
+  return <RedirectToSignIn />;
 }
