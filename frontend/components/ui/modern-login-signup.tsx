@@ -15,25 +15,41 @@ export default function ModernLoginSignup() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   
-  const { isLoaded: isSignInLoaded, signIn, setActive: setSignInActive } = useSignIn();
-  const { isLoaded: isSignUpLoaded, signUp, setActive: setSignUpActive } = useSignUp();
+  const { signIn, setActive: setSignInActive } = useSignIn();
+  const { signUp, setActive: setSignUpActive } = useSignUp();
 
-  const handleGoogleSignIn = () => {
-    if (!isSignInLoaded) return;
-    signIn.authenticateWithRedirect({
-      strategy: "oauth_google",
-      redirectUrl: "/sso-callback",
-      redirectUrlComplete: "/",
-    });
+  const handleGoogleSignIn = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!signIn) {
+      alert("Clerk is not fully loaded yet. Please wait a second and try again.");
+      return;
+    }
+    try {
+      await signIn.authenticateWithRedirect({
+        strategy: "oauth_google",
+        redirectUrl: "/sso-callback",
+        redirectUrlComplete: "/",
+      });
+    } catch (err: any) {
+      alert("Google Sign In Error: " + (err.errors?.[0]?.message || err.message || JSON.stringify(err)));
+    }
   };
 
-  const handleGoogleSignUp = () => {
-    if (!isSignUpLoaded) return;
-    signUp.authenticateWithRedirect({
-      strategy: "oauth_google",
-      redirectUrl: "/sso-callback",
-      redirectUrlComplete: "/onboarding",
-    });
+  const handleGoogleSignUp = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!signUp) {
+      alert("Clerk is not fully loaded yet. Please wait a second and try again.");
+      return;
+    }
+    try {
+      await signUp.authenticateWithRedirect({
+        strategy: "oauth_google",
+        redirectUrl: "/sso-callback",
+        redirectUrlComplete: "/onboarding",
+      });
+    } catch (err: any) {
+      alert("Google Sign Up Error: " + (err.errors?.[0]?.message || err.message || JSON.stringify(err)));
+    }
   };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
@@ -44,7 +60,7 @@ export default function ModernLoginSignup() {
 
     try {
       if (isLogin) {
-        if (!isSignInLoaded) return;
+        if (!signIn) throw new Error("Clerk SignIn not loaded");
         const { supportedFirstFactors } = await signIn.create({
           identifier: emailAddress,
         });
@@ -60,10 +76,10 @@ export default function ModernLoginSignup() {
           });
           setPendingVerification(true);
         } else {
-          setErrorMsg("Email OTP is not supported for this account.");
+          setErrorMsg("Email OTP is not supported. Please check Clerk Dashboard -> User & Authentication -> Email address -> Enable 'Email verification code'.");
         }
       } else {
-        if (!isSignUpLoaded) return;
+        if (!signUp) throw new Error("Clerk SignUp not loaded");
         await signUp.create({
           emailAddress,
         });
@@ -71,7 +87,8 @@ export default function ModernLoginSignup() {
         setPendingVerification(true);
       }
     } catch (err: any) {
-      setErrorMsg(err.errors?.[0]?.message || err.message || "An error occurred");
+      console.error(err);
+      setErrorMsg(err.errors?.[0]?.message || err.message || "An error occurred during email auth.");
     } finally {
       setIsLoading(false);
     }
@@ -85,7 +102,7 @@ export default function ModernLoginSignup() {
 
     try {
       if (isLogin) {
-        if (!isSignInLoaded) return;
+        if (!signIn) throw new Error("Clerk SignIn not loaded");
         const result = await signIn.attemptFirstFactor({
           strategy: 'email_code',
           code,
@@ -93,19 +110,24 @@ export default function ModernLoginSignup() {
         if (result.status === 'complete') {
           await setSignInActive({ session: result.createdSessionId });
           router.push('/');
+        } else {
+          throw new Error("Verification incomplete. Status: " + result.status);
         }
       } else {
-        if (!isSignUpLoaded) return;
+        if (!signUp) throw new Error("Clerk SignUp not loaded");
         const result = await signUp.attemptEmailAddressVerification({
           code,
         });
         if (result.status === 'complete') {
           await setSignUpActive({ session: result.createdSessionId });
           router.push('/onboarding');
+        } else {
+           throw new Error("Verification incomplete. Status: " + result.status);
         }
       }
     } catch (err: any) {
-      setErrorMsg(err.errors?.[0]?.message || err.message || "Invalid code");
+      console.error(err);
+      setErrorMsg(err.errors?.[0]?.longMessage || err.errors?.[0]?.message || err.message || "Invalid code");
     } finally {
       setIsLoading(false);
     }
