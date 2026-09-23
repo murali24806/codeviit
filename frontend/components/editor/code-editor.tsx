@@ -196,7 +196,7 @@ export function CodeEditor({ value, onChange, language }: CodeEditorProps) {
       </div>
 
       {/* Editor Body */}
-      <div className="relative flex flex-1 min-h-[500px] overflow-hidden">
+      <div className="relative flex flex-1 min-h-0 overflow-hidden">
 
         {/* Line Numbers */}
         <div
@@ -251,7 +251,7 @@ export function CodeEditor({ value, onChange, language }: CodeEditorProps) {
           autoCapitalize="off"
           className="flex-1 bg-transparent outline-none font-mono py-4 px-4 resize-none w-full border-none focus:ring-0"
           style={{
-            minHeight: "500px",
+            minHeight: "100%",
             caretColor: "#007acc",
             color: "transparent",
             fontSize: `${fontSize}px`,
