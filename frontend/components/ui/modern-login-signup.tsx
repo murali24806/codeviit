@@ -1,17 +1,25 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSignIn, useSignUp } from '@clerk/nextjs';
 
 export default function ModernLoginSignup() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isLogin, setIsLogin] = useState(true);
+  const router = useRouter();
   
-  const { signIn } = useSignIn();
-  const { signUp } = useSignUp();
+  const [isLogin, setIsLogin] = useState(true);
+  const [emailAddress, setEmailAddress] = useState("");
+  const [pendingVerification, setPendingVerification] = useState(false);
+  const [code, setCode] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  
+  const { isLoaded: isSignInLoaded, signIn, setActive: setSignInActive } = useSignIn();
+  const { isLoaded: isSignUpLoaded, signUp, setActive: setSignUpActive } = useSignUp();
 
   const handleGoogleSignIn = () => {
-    if (!signIn) return;
+    if (!isSignInLoaded) return;
     signIn.authenticateWithRedirect({
       strategy: "oauth_google",
       redirectUrl: "/sso-callback",
@@ -20,12 +28,87 @@ export default function ModernLoginSignup() {
   };
 
   const handleGoogleSignUp = () => {
-    if (!signUp) return;
+    if (!isSignUpLoaded) return;
     signUp.authenticateWithRedirect({
       strategy: "oauth_google",
       redirectUrl: "/sso-callback",
-      redirectUrlComplete: "/",
+      redirectUrlComplete: "/onboarding",
     });
+  };
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailAddress) return;
+    setErrorMsg("");
+    setIsLoading(true);
+
+    try {
+      if (isLogin) {
+        if (!isSignInLoaded) return;
+        const { supportedFirstFactors } = await signIn.create({
+          identifier: emailAddress,
+        });
+
+        const isEmailCodeFactor = (factor: any) => factor.strategy === 'email_code';
+        const emailCodeFactor = supportedFirstFactors?.find(isEmailCodeFactor);
+
+        if (emailCodeFactor) {
+          await signIn.prepareFirstFactor({
+            strategy: 'email_code',
+            // @ts-ignore
+            emailAddressId: emailCodeFactor.emailAddressId,
+          });
+          setPendingVerification(true);
+        } else {
+          setErrorMsg("Email OTP is not supported for this account.");
+        }
+      } else {
+        if (!isSignUpLoaded) return;
+        await signUp.create({
+          emailAddress,
+        });
+        await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+        setPendingVerification(true);
+      }
+    } catch (err: any) {
+      setErrorMsg(err.errors?.[0]?.message || err.message || "An error occurred");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!code) return;
+    setErrorMsg("");
+    setIsLoading(true);
+
+    try {
+      if (isLogin) {
+        if (!isSignInLoaded) return;
+        const result = await signIn.attemptFirstFactor({
+          strategy: 'email_code',
+          code,
+        });
+        if (result.status === 'complete') {
+          await setSignInActive({ session: result.createdSessionId });
+          router.push('/');
+        }
+      } else {
+        if (!isSignUpLoaded) return;
+        const result = await signUp.attemptEmailAddressVerification({
+          code,
+        });
+        if (result.status === 'complete') {
+          await setSignUpActive({ session: result.createdSessionId });
+          router.push('/onboarding');
+        }
+      }
+    } catch (err: any) {
+      setErrorMsg(err.errors?.[0]?.message || err.message || "Invalid code");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -234,15 +317,46 @@ export default function ModernLoginSignup() {
       <div style={{position:"absolute",inset:0,zIndex:1,background:"radial-gradient(circle at center,rgba(0,0,0,0.75) 0%,rgba(0,0,0,0) 100%)",pointerEvents:"none"}}/>
 
       <div style={{position:"relative",zIndex:2,background:"#121212",borderRadius:12,padding:"2rem",width:"100%",maxWidth:400,boxShadow:"0 10px 40px rgba(0,0,0,0.8)",display:"flex",flexDirection:"column",alignItems:"center",border:"1px solid #222"}}>
-        {isLogin ? (
+        {pendingVerification ? (
+          <div style={{width:"100%",maxWidth:360,display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center"}}>
+            {Logo}
+            <h1 style={{fontSize:"1.35rem",fontWeight:600,marginBottom:"0.25rem",letterSpacing:"-0.025em"}}>Check your Email</h1>
+            <p style={{fontSize:"0.85rem",color:"#888",marginBottom:"0.85rem",lineHeight:1.5}}>We sent a 6-digit code to {emailAddress}.</p>
+
+            {errorMsg && <div style={{width:"100%",padding:"0.5rem",background:"#310",color:"#f55",borderRadius:6,marginBottom:"0.75rem",fontSize:"0.8rem"}}>{errorMsg}</div>}
+
+            <form onSubmit={handleVerify} style={{width:"100%",display:"flex",flexDirection:"column",gap:"0.65rem"}}>
+              <input 
+                style={input} 
+                type="text" 
+                placeholder="123456" 
+                value={code}
+                onChange={e => setCode(e.target.value)}
+                maxLength={6}
+                required
+              />
+              <button type="submit" disabled={isLoading} style={{width:"100%",padding:"0.65rem",borderRadius:6,border:"none",background:"#ededed",color:"#000",fontWeight:500,fontSize:"0.875rem",cursor:isLoading?"not-allowed":"pointer", opacity: isLoading?0.7:1}}>
+                {isLoading ? "Verifying..." : "Verify Code"}
+              </button>
+            </form>
+            
+            <div style={{marginTop:"1.25rem",fontSize:"0.875rem",color:"#888"}}>
+              <button onClick={()=>setPendingVerification(false)} style={{color:"#fff",fontWeight:500,background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",fontSize:"inherit"}}>Go back</button>
+            </div>
+          </div>
+        ) : isLogin ? (
           <div style={{width:"100%",maxWidth:360,display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center"}}>
             {Logo}
             <h1 style={{fontSize:"1.35rem",fontWeight:600,marginBottom:"0.25rem",letterSpacing:"-0.025em"}}>Sign in to CodeViit</h1>
             <p style={{fontSize:"0.85rem",color:"#888",marginBottom:"0.85rem",lineHeight:1.5}}>Sign in to your Account.</p>
 
-            <form onSubmit={e=>{e.preventDefault(); alert("Email login requires Clerk configuration for magic links/OTP.")}} style={{width:"100%",display:"flex",flexDirection:"column",gap:"0.65rem"}}>
-              <input style={input} type="email" placeholder="name@work-email.com" required/>
-              <button type="submit" style={{width:"100%",padding:"0.65rem",borderRadius:6,border:"none",background:"#ededed",color:"#000",fontWeight:500,fontSize:"0.875rem",cursor:"pointer"}}>Continue with Email</button>
+            {errorMsg && <div style={{width:"100%",padding:"0.5rem",background:"#310",color:"#f55",borderRadius:6,marginBottom:"0.75rem",fontSize:"0.8rem"}}>{errorMsg}</div>}
+
+            <form onSubmit={handleEmailAuth} style={{width:"100%",display:"flex",flexDirection:"column",gap:"0.65rem"}}>
+              <input style={input} type="email" placeholder="name@work-email.com" value={emailAddress} onChange={e=>setEmailAddress(e.target.value)} required/>
+              <button type="submit" disabled={isLoading} style={{width:"100%",padding:"0.65rem",borderRadius:6,border:"none",background:"#ededed",color:"#000",fontWeight:500,fontSize:"0.875rem",cursor:isLoading?"not-allowed":"pointer", opacity: isLoading?0.7:1}}>
+                {isLoading ? "Sending code..." : "Continue with Email"}
+              </button>
             </form>
 
             <div style={{height:1,background:"#222",width:"100%",margin:"0.85rem 0"}}/>
@@ -252,7 +366,7 @@ export default function ModernLoginSignup() {
 
             <div style={{marginTop:"1.25rem",fontSize:"0.875rem",color:"#888"}}>
               Don't have an account?{" "}
-              <button onClick={()=>setIsLogin(false)} style={{color:"#fff",fontWeight:500,background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",fontSize:"inherit"}}>Sign Up</button>
+              <button onClick={()=>{setIsLogin(false);setErrorMsg("")}} style={{color:"#fff",fontWeight:500,background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",fontSize:"inherit"}}>Sign Up</button>
             </div>
             {Footer}
           </div>
@@ -262,10 +376,13 @@ export default function ModernLoginSignup() {
             <h1 style={{fontSize:"1.35rem",fontWeight:600,marginBottom:"0.25rem",letterSpacing:"-0.025em"}}>Sign up for CodeViit</h1>
             <p style={{fontSize:"0.85rem",color:"#888",marginBottom:"0.85rem",lineHeight:1.5}}>Create a new account to get started.</p>
 
-            <form onSubmit={e=>{e.preventDefault(); alert("Email signup requires Clerk configuration for magic links/OTP.")}} style={{width:"100%",display:"flex",flexDirection:"column",gap:"0.65rem"}}>
-              <input style={input} type="text" placeholder="Full Name" required/>
-              <input style={input} type="email" placeholder="name@work-email.com" required/>
-              <button type="submit" style={{width:"100%",padding:"0.65rem",borderRadius:6,border:"none",background:"#ededed",color:"#000",fontWeight:500,fontSize:"0.875rem",cursor:"pointer"}}>Sign Up with Email</button>
+            {errorMsg && <div style={{width:"100%",padding:"0.5rem",background:"#310",color:"#f55",borderRadius:6,marginBottom:"0.75rem",fontSize:"0.8rem"}}>{errorMsg}</div>}
+
+            <form onSubmit={handleEmailAuth} style={{width:"100%",display:"flex",flexDirection:"column",gap:"0.65rem"}}>
+              <input style={input} type="email" placeholder="name@work-email.com" value={emailAddress} onChange={e=>setEmailAddress(e.target.value)} required/>
+              <button type="submit" disabled={isLoading} style={{width:"100%",padding:"0.65rem",borderRadius:6,border:"none",background:"#ededed",color:"#000",fontWeight:500,fontSize:"0.875rem",cursor:isLoading?"not-allowed":"pointer", opacity: isLoading?0.7:1}}>
+                {isLoading ? "Sending code..." : "Sign Up with Email"}
+              </button>
             </form>
 
             <div style={{height:1,background:"#222",width:"100%",margin:"0.85rem 0"}}/>
@@ -275,7 +392,7 @@ export default function ModernLoginSignup() {
 
             <div style={{marginTop:"1.25rem",fontSize:"0.875rem",color:"#888"}}>
               Already have an account?{" "}
-              <button onClick={()=>setIsLogin(true)} style={{color:"#fff",fontWeight:500,background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",fontSize:"inherit"}}>Sign In</button>
+              <button onClick={()=>{setIsLogin(true);setErrorMsg("")}} style={{color:"#fff",fontWeight:500,background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",fontSize:"inherit"}}>Sign In</button>
             </div>
             {Footer}
           </div>
