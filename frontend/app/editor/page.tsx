@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useCallback, useState, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Play, Check, ChevronDown, ChevronUp, Terminal, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -35,8 +35,9 @@ const getBackendUrl = () => {
 }
 const BACKEND_URL = getBackendUrl()
 
-export default function EditorPage() {
+function EditorPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { createProblem, updateProblem, saveStatus } = useProblems()
   const { authFetch } = useAuth()
 
@@ -47,7 +48,7 @@ export default function EditorPage() {
   const [localTestCases, setLocalTestCases] = useState<TestCase[]>([
     { id: "tc_1", input: "", expectedOutput: "" }
   ])
-  const [localLanguage, setLocalLanguage] = useState("python")
+  const [localLanguage, setLocalLanguage] = useState<string>(searchParams.get("lang") || "python")
   const [problemId, setProblemId] = useState<string | null>(null)
 
   const [isRunning, setIsRunning] = useState(false)
@@ -375,5 +376,15 @@ export default function EditorPage() {
 
       </div>
     </PageTransition>
+  )
+}
+
+import { Suspense } from 'react'
+
+export default function EditorPageWrapper() {
+  return (
+    <Suspense fallback={<div className="h-screen bg-[#1a1a1a] flex items-center justify-center"><Spinner size="lg" /></div>}>
+      <EditorPage />
+    </Suspense>
   )
 }

@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Plus, FileCode2, Clock, Layers, Trophy, Calendar, ArrowRight, LogOut, CheckCircle2, User as UserIcon } from "lucide-react"
+import { Plus, FileCode2, Clock, Layers, Trophy, Calendar, ArrowRight, LogOut, CheckCircle2, User as UserIcon, Terminal, Code2 } from "lucide-react"
 import { PageTransition } from "@/components/page-transition"
 import { ProblemCard } from "@/components/problem-card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/lib/auth-context"
 import { useProblems } from "@/lib/problems-context"
-import type { Contest } from "@/lib/types"
+import { Contest, LANGUAGES } from "@/lib/types"
 import { ActivityCalendar } from "@/components/activity-calendar"
 import { CircularProgress } from "@/components/circular-progress"
 
@@ -317,6 +317,30 @@ export default function DashboardPage() {
                 })}
               </div>
             )}
+          </div>
+
+          {/* ONLINE COMPILERS */}
+          <div className="mb-14">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Terminal className="w-5 h-5 text-emerald-400" /> Online Compilers
+                </h2>
+                <p className="text-xs text-zinc-400 mt-1">Quickly run and test code in any language, similar to Programiz or GDB.</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
+              {LANGUAGES.map(lang => (
+                <Link key={lang.value} href={`/editor?lang=${lang.value}`}>
+                  <div className="bg-zinc-900/60 border border-white/10 hover:border-emerald-500/40 hover:bg-emerald-950/20 rounded-xl p-4 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer group h-full">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${lang.color} bg-opacity-20`}>
+                      <Code2 className={`w-5 h-5 text-white`} />
+                    </div>
+                    <span className="text-sm font-bold text-zinc-300 group-hover:text-emerald-400 text-center">{lang.label}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
 
           {/* SECTION 2: PRACTICE CODE SANDBOX */}
