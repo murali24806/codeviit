@@ -55,7 +55,7 @@ function EditorPage() {
   const [results, setResults] = useState<TestResult[]>([])
   const [consoleOutput, setConsoleOutput] = useState("")
   const [isConsoleExpanded, setIsConsoleExpanded] = useState(true)
-  const [activeConsoleTab, setActiveConsoleTab] = useState<"testcases" | "result">("testcases")
+  const [activeConsoleTab, setActiveConsoleTab] = useState<"input" | "testcases" | "result">("input")
 
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -277,6 +277,17 @@ function EditorPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => {
+                          setActiveConsoleTab("input")
+                          setIsConsoleExpanded(true)
+                        }}
+                        className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+                          activeConsoleTab === "input" ? "bg-[#3e3e42] text-white" : "text-zinc-400 hover:text-white"
+                        }`}
+                      >
+                        Custom Input
+                      </button>
+                      <button
+                        onClick={() => {
                           setActiveConsoleTab("testcases")
                           setIsConsoleExpanded(true)
                         }}
@@ -309,8 +320,23 @@ function EditorPage() {
                   </div>
 
                   {isConsoleExpanded && (
-                    <div className="flex-1 overflow-y-auto p-4 font-mono text-xs text-[#d4d4d4]">
-                      {activeConsoleTab === "testcases" ? (
+                    <div className="flex-1 overflow-y-auto p-4 font-mono text-xs text-[#d4d4d4] flex flex-col">
+                      {activeConsoleTab === "input" ? (
+                        <div className="h-full flex flex-col flex-1">
+                          <label className="text-xs font-bold text-zinc-400 mb-2 block uppercase">Standard Input (stdin)</label>
+                          <Textarea 
+                            value={localTestCases[0]?.input || ""}
+                            onChange={(e) => {
+                              const newCases = [...localTestCases]
+                              if (newCases.length === 0) newCases.push({ id: "tc_1", input: "", expectedOutput: "" })
+                              newCases[0].input = e.target.value
+                              handleTestCasesChange(newCases)
+                            }}
+                            placeholder="Type input here..."
+                            className="flex-1 min-h-[100px] bg-[#1a1a1a] border-[#3e3e42] text-zinc-300 font-mono text-sm resize-none focus:border-emerald-500 custom-scrollbar"
+                          />
+                        </div>
+                      ) : activeConsoleTab === "testcases" ? (
                         <div className="space-y-3">
                           {localTestCases.map((tc, idx) => (
                             <div key={tc.id || idx} className="bg-[#1a1a1a] p-3 rounded-lg border border-[#3e3e42] space-y-1.5">
