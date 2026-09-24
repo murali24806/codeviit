@@ -43,6 +43,7 @@ export default function RootLayout({
       <body className="font-sans antialiased bg-black">
         <ClerkProvider
           appearance={{
+            // @ts-ignore
             baseTheme: dark,
             variables: { colorPrimary: '#2563eb' }
           }}

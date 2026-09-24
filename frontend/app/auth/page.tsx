@@ -17,5 +17,5 @@ export default function AuthPage() {
   if (!isLoaded) return null;
   if (isSignedIn) return null;
 
-  return <RedirectToSignIn fallbackRedirectUrl="/dashboard" signUpFallbackRedirectUrl="/dashboard" />;
+  return <RedirectToSignIn signInFallbackRedirectUrl="/dashboard" signUpFallbackRedirectUrl="/dashboard" />;
 }

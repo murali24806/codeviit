@@ -16,12 +16,88 @@ export function CodeEditor({ value, onChange, language }: CodeEditorProps) {
   const [lineCount, setLineCount] = useState(1)
   const [highlighted, setHighlighted] = useState("")
   const [fontSize, setFontSize] = useState(16) // Default larger 16px font size
+  const [suggestionStr, setSuggestionStr] = useState("")
+  const [cursorIdx, setCursorIdx] = useState(0)
+
+  const getSuggestion = (word: string, lang: string) => {
+    if (word.length < 2) return ""
+    
+    const langDicts: Record<string, string[]> = {
+      python: [
+        "print()", "len()", "range()", "append()", "extend()", "insert()", "remove()", "pop()", 
+        "clear()", "index()", "count()", "sort()", "reverse()", "copy()", "keys()", "values()", 
+        "items()", "split()", "join()", "strip()", "replace()", "startswith()", "endswith()",
+        "find()", "format()", "upper()", "lower()", "map()", "filter()", "reduce()", "zip()"
+      ],
+      javascript: [
+        "console.log()", "document.getElementById()", "document.querySelector()",
+        "addEventListener()", "setTimeout()", "setInterval()",
+        "push()", "pop()", "shift()", "unshift()", "splice()", "slice()", "indexOf()",
+        "map()", "filter()", "reduce()", "forEach()", "some()", "every()", "find()",
+        "sort()", "reverse()", "join()", "split()", "replace()", "toUpperCase()", "toLowerCase()",
+        "Math.max()", "Math.min()", "Math.random()", "Math.floor()", "Math.ceil()", "length"
+      ],
+      cpp: [
+        "#include", "iostream", "vector", "string", "algorithm", "cmath", "unordered_map",
+        "std::cout", "std::cin", "std::endl", "push_back()", "pop_back()", "size()", "empty()",
+        "clear()", "insert()", "erase()", "begin()", "end()", "rbegin()", "rend()",
+        "sort()", "reverse()", "find()", "count()", "max()", "min()", "swap()", "printf()", "scanf()"
+      ],
+      java: [
+        "System.out.println()", "System.out.print()", "Scanner", "ArrayList", "HashMap", "HashSet",
+        "length()", "charAt()", "substring()", "indexOf()", "equals()", "compareTo()",
+        "toUpperCase()", "toLowerCase()", "trim()", "replace()", "split()",
+        "add()", "remove()", "get()", "set()", "size()", "isEmpty()", "clear()", "contains()",
+        "Math.max()", "Math.min()", "Math.abs()", "Math.pow()", "Math.sqrt()"
+      ],
+      c: [
+        "#include", "stdio.h", "stdlib.h", "string.h", "math.h",
+        "printf()", "scanf()", "malloc()", "calloc()", "realloc()", "free()",
+        "strlen()", "strcpy()", "strncpy()", "strcmp()", "strcat()", "strchr()",
+        "abs()", "pow()", "sqrt()", "ceil()", "floor()"
+      ],
+      go: [
+        "fmt.Println()", "fmt.Printf()", "fmt.Scan()", "fmt.Sprintf()",
+        "make()", "append()", "len()", "cap()", "copy()", "delete()",
+        "panic()", "recover()", "close()", "strings.Contains()", "strings.Split()",
+        "strings.Join()", "strings.Replace()", "strings.ToLower()", "strings.ToUpper()",
+        "math.Max()", "math.Min()", "math.Abs()", "math.Pow()"
+      ],
+      rust: [
+        "println!()", "print!()", "format!()", "vec![]",
+        "push()", "pop()", "len()", "is_empty()", "clear()", "insert()", "remove()",
+        "contains()", "iter()", "into_iter()", "map()", "filter()", "fold()",
+        "unwrap()", "expect()", "clone()", "to_string()", "parse()", "sort()", "reverse()"
+      ]
+    }
+
+    const common = [
+      "return", "break", "continue", "import", "class", "function", "while", "true", "false", "length"
+    ]
+
+    const dict = langDicts[lang] || []
+    const fullDict = [...dict, ...common]
+    
+    const match = fullDict.find(c => c.startsWith(word) && c !== word)
+    return match ? match.substring(word.length) : ""
+  }
+
+  const updateSuggestion = (val: string, cursor: number) => {
+    setCursorIdx(cursor)
+    const textBefore = val.substring(0, cursor)
+    const match = textBefore.match(/[a-zA-Z0-9_]+$/)
+    if (match) {
+      setSuggestionStr(getSuggestion(match[0], language))
+    } else {
+      setSuggestionStr("")
+    }
+  }
 
   useEffect(() => {
     const lines = value.split("\n").length
     setLineCount(Math.max(lines, 25))
-    setHighlighted(highlightCode(value, language))
-  }, [value, language])
+    setHighlighted(highlightCode(value, language, suggestionStr ? { index: cursorIdx, text: suggestionStr } : undefined))
+  }, [value, language, suggestionStr, cursorIdx])
 
   const handleScroll = () => {
     if (textareaRef.current && lineNumbersRef.current && highlightRef.current) {
@@ -44,6 +120,16 @@ export function CodeEditor({ value, onChange, language }: CodeEditorProps) {
 
     if (e.key === "Tab") {
       e.preventDefault()
+      if (suggestionStr && start === cursorIdx && start === end) {
+        const newValue = value.substring(0, start) + suggestionStr + value.substring(end)
+        onChange(newValue)
+        setSuggestionStr("")
+        setTimeout(() => {
+          target.selectionStart = target.selectionEnd = start + suggestionStr.length
+          updateSuggestion(newValue, start + suggestionStr.length)
+        }, 0)
+        return
+      }
       if (e.shiftKey) {
         // Shift+Tab: Unindent
         const lineStart = value.lastIndexOf("\n", start - 1) + 1
@@ -242,7 +328,16 @@ export function CodeEditor({ value, onChange, language }: CodeEditorProps) {
         <textarea
           ref={textareaRef}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            onChange(e.target.value)
+            updateSuggestion(e.target.value, e.target.selectionStart)
+          }}
+          onClick={(e) => updateSuggestion(e.currentTarget.value, e.currentTarget.selectionStart)}
+          onKeyUp={(e) => {
+            if (e.key !== "Tab" && e.key !== "Enter") {
+              updateSuggestion(e.currentTarget.value, e.currentTarget.selectionStart)
+            }
+          }}
           onKeyDown={handleKeyDown}
           onScroll={handleScroll}
           spellCheck={false}
@@ -264,7 +359,7 @@ export function CodeEditor({ value, onChange, language }: CodeEditorProps) {
   )
 }
 
-function highlightCode(code: string, language: string): string {
+function highlightCode(code: string, language: string, suggestion?: { index: number, text: string }): string {
   if (!code) return ""
 
   const keywordsMap: Record<string, string[]> = {
@@ -280,6 +375,7 @@ function highlightCode(code: string, language: string): string {
 
   const keywordSet = new Set(keywordsMap[language] || keywordsMap.cpp)
 
+  let globalIndex = 0;
   const lines = code.split("\n")
   const highlightedLines = lines.map(line => {
     let i = 0
@@ -287,6 +383,9 @@ function highlightCode(code: string, language: string): string {
     const len = line.length
 
     while (i < len) {
+      if (suggestion && globalIndex + i === suggestion.index) {
+         out += `<span style="color:#6e7681; opacity: 0.7;">${escapeHtml(suggestion.text)}</span>`
+      }
       if (i === 0 && (language === "cpp" || language === "c") && line[i] === "#") {
         const rest = escapeHtml(line)
         return `<span style="color:#e06c75">${rest}</span>`
@@ -357,6 +456,11 @@ function highlightCode(code: string, language: string): string {
       i++
     }
 
+    if (suggestion && globalIndex + len === suggestion.index) {
+       out += `<span style="color:#6e7681; opacity: 0.7;">${escapeHtml(suggestion.text)}</span>`
+    }
+    
+    globalIndex += len + 1
     return out
   })
 

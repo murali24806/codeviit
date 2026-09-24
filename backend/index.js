@@ -199,7 +199,7 @@ app.post('/api/execute', verifyToken, async (req, res) => {
         const compileOutput = submitRes.data.compile_output?.trim() || submitRes.data.message || ''
         const errorOutput = submitRes.data.stderr?.trim() || compileOutput
         const isHidden = testCase.isHidden === true
-        const passed = output === expected
+        const passed = submitRes.data.status?.id === 3 && output === expected
         const pts = testCase.points !== undefined ? Number(testCase.points) : Math.round(100 / testCases.length)
         
         return {
@@ -403,7 +403,7 @@ app.post('/api/contests/:id/submit', verifyToken, async (req, res) => {
           const expected = tc.expectedOutput?.trim() || ''
           const compileOutput = submitRes.data.compile_output?.trim() || submitRes.data.message || ''
           const errorOutput = submitRes.data.stderr?.trim() || compileOutput
-          const passed = output === expected
+          const passed = submitRes.data.status?.id === 3 && output === expected
           if (passed) passedCount++
 
           const isHidden = tc.isHidden === true
@@ -607,7 +607,7 @@ app.post('/api/exercises/:id/submit', verifyToken, async (req, res) => {
           const expected = tc.expectedOutput?.trim() || ''
           const compileOutput = submitRes.data.compile_output?.trim() || submitRes.data.message || ''
           const errorOutput = submitRes.data.stderr?.trim() || compileOutput
-          const passed = output === expected
+          const passed = submitRes.data.status?.id === 3 && output === expected
           if (passed) passedCount++
 
           const isHidden = tc.isHidden === true

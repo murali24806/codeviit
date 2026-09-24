@@ -4,6 +4,11 @@ export interface User {
   registrationNumber?: string
   email: string
   role?: 'student' | 'admin'
+  branch?: string
+  collegeName?: string
+  section?: string
+  profilePhotoUrl?: string
+  isFirstTimeLogin?: boolean
   createdAt?: string
   totalPoints?: number
   contestsAttempted?: number
@@ -27,6 +32,7 @@ export interface TestResult {
   actualOutput: string
   error?: string | null
   status?: string
+  isHidden?: boolean
 }
 
 export interface Problem {
