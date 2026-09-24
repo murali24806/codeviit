@@ -38,6 +38,7 @@ const BACKEND_URL = getBackendUrl()
 function EditorPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const mode = searchParams.get("mode") // "compiler" or null
   const { createProblem, updateProblem, saveStatus } = useProblems()
   const { authFetch } = useAuth()
 
@@ -165,11 +166,11 @@ function EditorPage() {
               <ArrowLeft className="w-4 h-4" />
             </Link>
             <div className="h-4 w-px bg-white/10 hidden sm:block" />
-            <span className="font-bold text-sm text-white tracking-wide">Practice Code Sandbox</span>
+            <span className="font-bold text-sm text-white tracking-wide">{mode === "compiler" ? "Online Compiler" : "Practice Code Sandbox"}</span>
           </div>
 
           <div className="flex items-center gap-3">
-            <SaveStatusIndicator />
+            {mode !== "compiler" && <SaveStatusIndicator />}
 
             <Select value={localLanguage} onValueChange={handleLanguageChange}>
               <SelectTrigger className="w-[120px] bg-[#3e3e42] border-[#444] text-white rounded-md text-xs h-7 focus:ring-0">
@@ -209,50 +210,54 @@ function EditorPage() {
           <ResizablePanelGroup direction="horizontal" className="h-full rounded-xl overflow-hidden border border-[#3e3e42]">
             
             {/* Left Panel: Problem Creator & AI Assistant */}
-            <ResizablePanel defaultSize={40} minSize={20} className="bg-[#282828] flex flex-col h-full">
-              <div className="bg-[#282828] border-b border-[#3e3e42] px-3 h-10 flex items-center gap-2 shrink-0">
-                <span className="text-xs font-semibold text-white flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-blue-400" /> Problem Details & Testcases
-                </span>
-              </div>
+            {mode !== "compiler" && (
+              <>
+                <ResizablePanel defaultSize={40} minSize={20} className="bg-[#282828] flex flex-col h-full">
+                  <div className="bg-[#282828] border-b border-[#3e3e42] px-3 h-10 flex items-center gap-2 shrink-0">
+                    <span className="text-xs font-semibold text-white flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-blue-400" /> Problem Details & Testcases
+                    </span>
+                  </div>
 
-              <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
-                <Input
-                  value={localTitle}
-                  onChange={(e) => handleTitleChange(e.target.value)}
-                  placeholder="Problem Title (e.g. Reverse Linked List)"
-                  className="bg-[#1a1a1a] border-[#3e3e42] text-xl font-bold text-white placeholder:text-zinc-500 focus:border-emerald-500"
-                />
+                  <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
+                    <Input
+                      value={localTitle}
+                      onChange={(e) => handleTitleChange(e.target.value)}
+                      placeholder="Problem Title (e.g. Reverse Linked List)"
+                      className="bg-[#1a1a1a] border-[#3e3e42] text-xl font-bold text-white placeholder:text-zinc-500 focus:border-emerald-500"
+                    />
 
-                <Textarea
-                  value={localDescription}
-                  onChange={(e) => handleDescriptionChange(e.target.value)}
-                  placeholder="Describe your problem statement, constraints, and requirements..."
-                  className="bg-[#1a1a1a] border-[#3e3e42] text-sm text-zinc-300 placeholder:text-zinc-500 rounded-lg min-h-[140px] resize-y focus:border-emerald-500 custom-scrollbar"
-                />
+                    <Textarea
+                      value={localDescription}
+                      onChange={(e) => handleDescriptionChange(e.target.value)}
+                      placeholder="Describe your problem statement, constraints, and requirements..."
+                      className="bg-[#1a1a1a] border-[#3e3e42] text-sm text-zinc-300 placeholder:text-zinc-500 rounded-lg min-h-[140px] resize-y focus:border-emerald-500 custom-scrollbar"
+                    />
 
-                <div className="h-px bg-[#3e3e42]" />
+                    <div className="h-px bg-[#3e3e42]" />
 
-                <TestCaseManager
-                  testCases={localTestCases}
-                  onUpdate={handleTestCasesChange}
-                />
+                    <TestCaseManager
+                      testCases={localTestCases}
+                      onUpdate={handleTestCasesChange}
+                    />
 
-                <div className="h-px bg-[#3e3e42]" />
+                    <div className="h-px bg-[#3e3e42]" />
 
-                <AIAssistant
-                  problemDescription={localDescription}
-                  code={localCode}
-                  existingTestCases={localTestCases}
-                  onTestCasesGenerated={handleTestCasesChange}
-                />
-              </div>
-            </ResizablePanel>
+                    <AIAssistant
+                      problemDescription={localDescription}
+                      code={localCode}
+                      existingTestCases={localTestCases}
+                      onTestCasesGenerated={handleTestCasesChange}
+                    />
+                  </div>
+                </ResizablePanel>
 
-            <ResizableHandle withHandle className="bg-black/30 w-1.5 hover:bg-emerald-500/50 transition-colors" />
+                <ResizableHandle withHandle className="bg-black/30 w-1.5 hover:bg-emerald-500/50 transition-colors" />
+              </>
+            )}
 
             {/* Right Panel: Full Height Editor & Console Panel */}
-            <ResizablePanel defaultSize={60} minSize={30} className="bg-[#1a1a1a] flex flex-col h-full">
+            <ResizablePanel defaultSize={mode === "compiler" ? 100 : 60} minSize={30} className="bg-[#1a1a1a] flex flex-col h-full">
               <ResizablePanelGroup direction="vertical" className="h-full">
                 
                 {/* Upper Section: Code Editor */}
@@ -286,17 +291,19 @@ function EditorPage() {
                       >
                         Custom Input
                       </button>
-                      <button
-                        onClick={() => {
-                          setActiveConsoleTab("testcases")
-                          setIsConsoleExpanded(true)
-                        }}
-                        className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
-                          activeConsoleTab === "testcases" ? "bg-[#3e3e42] text-white" : "text-zinc-400 hover:text-white"
-                        }`}
-                      >
-                        Testcases ({localTestCases.length})
-                      </button>
+                      {mode !== "compiler" && (
+                        <button
+                          onClick={() => {
+                            setActiveConsoleTab("testcases")
+                            setIsConsoleExpanded(true)
+                          }}
+                          className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+                            activeConsoleTab === "testcases" ? "bg-[#3e3e42] text-white" : "text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          Testcases ({localTestCases.length})
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           setActiveConsoleTab("result")

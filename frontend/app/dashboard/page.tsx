@@ -331,7 +331,7 @@ export default function DashboardPage() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
               {LANGUAGES.map(lang => (
-                <Link key={lang.value} href={`/editor?lang=${lang.value}`}>
+                <Link key={lang.value} href={`/editor?lang=${lang.value}&mode=compiler`}>
                   <div className="bg-zinc-900/60 border border-white/10 hover:border-emerald-500/40 hover:bg-emerald-950/20 rounded-xl p-4 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer group h-full">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${lang.color} bg-opacity-20`}>
                       <Code2 className={`w-5 h-5 text-white`} />
