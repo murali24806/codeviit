@@ -45,6 +45,8 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0)
   const [selectedLanguage, setSelectedLanguage] = useState<Language>("python")
   const [code, setCode] = useState("")
+  const [localCodes, setLocalCodes] = useState<Record<string, string>>({})
+  const [localLangs, setLocalLangs] = useState<Record<string, Language>>({})
   const [isLoading, setIsLoading] = useState(true)
 
   const [isRunning, setIsRunning] = useState(false)
@@ -99,13 +101,26 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
             const statsData = await statsRes.json()
             if (statsData.submissions) {
               setUserSubmissions(statsData.submissions)
+              
+              // Load all submissions into local state
+              const codes: Record<string, string> = {}
+              const langs: Record<string, Language> = {}
+              data.contest?.questions?.forEach((q: any) => {
+                const sub = statsData.submissions.sort((a: any, b: any) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()).find((s: any) => s.contestId === contestId && s.questionId === q.id)
+                if (sub) {
+                  codes[q.id] = sub.code
+                  langs[q.id] = (sub.language as Language) || "python"
+                }
+              })
+              setLocalCodes(codes)
+              setLocalLangs(langs)
+
               // check for first question submission
               const firstQ = data.contest?.questions?.[0]
               if (firstQ) {
-                const sub = statsData.submissions.sort((a: any, b: any) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()).find((s: any) => s.contestId === contestId && s.questionId === firstQ.id)
-                if (sub) {
-                  previousCode = sub.code
-                  previousLang = (sub.language as Language) || "python"
+                if (codes[firstQ.id]) {
+                  previousCode = codes[firstQ.id]
+                  previousLang = langs[firstQ.id]
                 }
               }
             }
@@ -185,7 +200,12 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
   const handleLanguageChange = (lang: string) => {
     const l = lang as Language
     setSelectedLanguage(l)
-    setCode(DEFAULT_STARTER_CODE[l] || `# Code here in ${l}`)
+    const newCode = DEFAULT_STARTER_CODE[l] || `# Code here in ${l}`
+    setCode(newCode)
+    if (currentQuestion) {
+      setLocalLangs(prev => ({ ...prev, [currentQuestion.id]: l }))
+      setLocalCodes(prev => ({ ...prev, [currentQuestion.id]: newCode }))
+    }
   }
 
   const handleResetCode = () => {
@@ -690,13 +710,15 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
                   setResults([])
                   setSubmissionFeedback(null)
                   
-                  // Load previous submission if exists
-                  const sub = userSubmissions.sort((a: any, b: any) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()).find((s: any) => s.contestId === contest.id && s.questionId === q.id)
-                  if (sub) {
-                    setSelectedLanguage((sub.language as Language) || "python")
-                    setCode(sub.code)
-                  } else {
-                    setCode(DEFAULT_STARTER_CODE[selectedLanguage] || "")
+                  // Load previous submission or local state if exists
+                  const q = contest.questions[idx];
+                  if (q) {
+                    if (localCodes[q.id]) {
+                      setSelectedLanguage(localLangs[q.id] || "python")
+                      setCode(localCodes[q.id])
+                    } else {
+                      setCode(DEFAULT_STARTER_CODE[selectedLanguage] || "")
+                    }
                   }
                 }}
                 className={`px-2 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
@@ -768,10 +790,9 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
               setSubmissionFeedback(null);
               const q = contest.questions[idx];
               if (q) {
-                const sub = userSubmissions.sort((a: any, b: any) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()).find((s: any) => s.contestId === contest.id && s.questionId === q.id)
-                if (sub) {
-                  setSelectedLanguage((sub.language as Language) || "python")
-                  setCode(sub.code)
+                if (localCodes[q.id]) {
+                  setSelectedLanguage(localLangs[q.id] || "python")
+                  setCode(localCodes[q.id])
                 } else {
                   setCode(DEFAULT_STARTER_CODE[selectedLanguage] || "")
                 }
@@ -842,7 +863,10 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
                 {/* Top: Code Editor */}
                 <ResizablePanel defaultSize={60} minSize={20} className="bg-[#1a1a1a] flex flex-col">
                   <div className="flex-1 overflow-hidden">
-                    <CodeEditor value={code} onChange={setCode} language={selectedLanguage} />
+                    <CodeEditor value={code} onChange={(val) => {
+                      setCode(val)
+                      if (currentQuestion) setLocalCodes(prev => ({ ...prev, [currentQuestion.id]: val }))
+                    }} language={selectedLanguage} />
                   </div>
                 </ResizablePanel>
 
@@ -872,7 +896,10 @@ export default function ContestArenaPage({ params }: { params: Promise<{ id: str
           
           <div className={`flex-1 flex-col h-full overflow-hidden ${mobileTab === "code" ? "flex" : "hidden"}`}>
             <div className="flex-1 overflow-hidden border border-[#3e3e42] rounded-xl flex flex-col">
-              <CodeEditor value={code} onChange={setCode} language={selectedLanguage} />
+              <CodeEditor value={code} onChange={(val) => {
+                setCode(val)
+                if (currentQuestion) setLocalCodes(prev => ({ ...prev, [currentQuestion.id]: val }))
+              }} language={selectedLanguage} />
             </div>
           </div>
 

@@ -61,7 +61,30 @@ export default function ExerciseArenaPage({ params }: { params: Promise<{ id: st
       const data = await res.json()
       if (data.exercise) {
         setExercise(data.exercise)
-        if (data.exercise.starterCode && data.exercise.starterCode[selectedLanguage]) {
+        
+        let previousCode = null;
+        let previousLang = selectedLanguage;
+        
+        try {
+          const statsRes = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/user/stats`)
+          if (statsRes.ok) {
+            const statsData = await statsRes.json()
+            if (statsData.submissions) {
+              const sub = statsData.submissions.sort((a: any, b: any) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()).find((s: any) => s.questionId === exerciseId)
+              if (sub) {
+                previousCode = sub.code
+                previousLang = (sub.language as Language) || selectedLanguage
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error fetching user stats:", e)
+        }
+
+        if (previousCode) {
+          setSelectedLanguage(previousLang)
+          setCode(previousCode)
+        } else if (data.exercise.starterCode && data.exercise.starterCode[selectedLanguage]) {
           setCode(data.exercise.starterCode[selectedLanguage])
         } else {
           setCode(DEFAULT_STARTER_CODE[selectedLanguage])

@@ -185,15 +185,24 @@ app.post('/api/execute', verifyToken, async (req, res) => {
 
     const results = await Promise.all(
       testCases.map(async (testCase) => {
-        const submitRes = await axios.post(
-          `${judge0Url}/submissions?base64_encoded=false&wait=true`,
-          {
-            source_code: code,
-            language_id: LANGUAGE_IDS[language] || 71,
-            stdin: testCase.input
-          },
-          { headers: judge0Headers }
-        )
+        let submitRes = { data: {} }
+        try {
+          submitRes = await axios.post(
+            `${judge0Url}/submissions?base64_encoded=false&wait=true`,
+            {
+              source_code: code,
+              language_id: LANGUAGE_IDS[language] || 71,
+              stdin: testCase.input
+            },
+            { headers: judge0Headers }
+          )
+        } catch (apiError) {
+          submitRes.data = {
+            status: { id: 13, description: "Internal Error" },
+            compile_output: apiError.message || "Judge0 Execution Error",
+            message: "API Request Failed"
+          }
+        }
         const output = submitRes.data.stdout?.trim() || ''
         const expected = testCase.expectedOutput?.trim() || ''
         const compileOutput = submitRes.data.compile_output?.trim() || submitRes.data.message || ''
@@ -390,15 +399,24 @@ app.post('/api/contests/:id/submit', verifyToken, async (req, res) => {
     if (testCases.length > 0) {
       testResults = await Promise.all(
         testCases.map(async (tc) => {
-          const submitRes = await axios.post(
-            `${judge0Url}/submissions?base64_encoded=false&wait=true`,
-            {
-              source_code: code,
-              language_id: LANGUAGE_IDS[language] || 71,
-              stdin: tc.input
-            },
-            { headers: judge0Headers }
-          )
+          let submitRes = { data: {} }
+          try {
+            submitRes = await axios.post(
+              `${judge0Url}/submissions?base64_encoded=false&wait=true`,
+              {
+                source_code: code,
+                language_id: LANGUAGE_IDS[language] || 71,
+                stdin: tc.input
+              },
+              { headers: judge0Headers }
+            )
+          } catch (apiError) {
+            submitRes.data = {
+              status: { id: 13, description: "Internal Error" },
+              compile_output: apiError.message || "Judge0 Execution Error",
+              message: "API Request Failed"
+            }
+          }
           const output = submitRes.data.stdout?.trim() || ''
           const expected = tc.expectedOutput?.trim() || ''
           const compileOutput = submitRes.data.compile_output?.trim() || submitRes.data.message || ''
@@ -594,15 +612,24 @@ app.post('/api/exercises/:id/submit', verifyToken, async (req, res) => {
     if (testCases.length > 0) {
       testResults = await Promise.all(
         testCases.map(async (tc) => {
-          const submitRes = await axios.post(
-            `${judge0Url}/submissions?base64_encoded=false&wait=true`,
-            {
-              source_code: code,
-              language_id: LANGUAGE_IDS[language] || 71,
-              stdin: tc.input
-            },
-            { headers: judge0Headers }
-          )
+          let submitRes = { data: {} }
+          try {
+            submitRes = await axios.post(
+              `${judge0Url}/submissions?base64_encoded=false&wait=true`,
+              {
+                source_code: code,
+                language_id: LANGUAGE_IDS[language] || 71,
+                stdin: tc.input
+              },
+              { headers: judge0Headers }
+            )
+          } catch (apiError) {
+            submitRes.data = {
+              status: { id: 13, description: "Internal Error" },
+              compile_output: apiError.message || "Judge0 Execution Error",
+              message: "API Request Failed"
+            }
+          }
           const output = submitRes.data.stdout?.trim() || ''
           const expected = tc.expectedOutput?.trim() || ''
           const compileOutput = submitRes.data.compile_output?.trim() || submitRes.data.message || ''
@@ -628,16 +655,26 @@ app.post('/api/exercises/:id/submit', verifyToken, async (req, res) => {
     const score = Math.round((passedCount / totalCount) * 100)
     const status = passedCount === totalCount ? 'Accepted' : passedCount > 0 ? 'Partially Accepted' : 'Wrong Answer'
 
-    // We can also save the exercise submission, but for now we just return the result
+    const submission = await storage.saveSubmission({
+      id: 'sub_ex_' + Date.now(),
+      questionId: exercise.id,
+      questionTitle: exercise.title,
+      userId: req.user.id,
+      userName: req.user.name || 'Student',
+      email: req.user.email || '',
+      language,
+      code,
+      score,
+      passedCount,
+      totalCount,
+      status,
+      testResults,
+      submittedAt: new Date().toISOString()
+    })
+
     res.json({
       success: true,
-      submission: {
-        score,
-        passedCount,
-        totalCount,
-        status,
-        testResults
-      }
+      submission
     })
   } catch (error) {
     console.error('Exercise execution error:', error)
